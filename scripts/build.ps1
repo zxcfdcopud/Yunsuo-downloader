@@ -181,16 +181,16 @@ foreach ($devDoc in 'PAN_PROVIDERS.md', '发布清单.md') {
 
 Copy-Item (Join-Path $Root 'README.md') $OutDir -Force
 
-# 一份默认更新源示例
-$updateSample = @'
-{
-  "version": "1.0.0",
-  "url": "",
-  "notes": "把 url 换成本次发布安装包的下载地址；版本号高于当前程序版本时，程序会提示更新。",
-  "sha256": ""
+# 注意：不要再往发布目录里放 update.json 样例。
+# 程序把「程序目录下的 update.json」排在候选更新源的第一位，且一旦解析成功就立刻返回结果，
+# 于是这份 version 等于当前版本、url 为空的样例会让「检查更新」永远显示"已是最新"，
+# 用户再也看不到 GitHub 上的新版本。更新源现在只有内置的 GitHub Releases；
+# 需要本地/内网覆盖时，用户自己放一份带真实 url 的 update.json 即可。
+$legacyUpdateSample = Join-Path $OutDir 'update.json'
+if (Test-Path $legacyUpdateSample) {
+    Remove-Item $legacyUpdateSample -Force
+    Write-Warn2 '已删除上一轮构建遗留的 update.json（它会盖住 GitHub 更新源）'
 }
-'@
-$updateSample | Out-File -FilePath (Join-Path $OutDir 'update.json') -Encoding UTF8
 
 # ---------------------------------------------------------------- 汇总
 Write-Host ''

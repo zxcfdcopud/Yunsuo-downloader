@@ -115,9 +115,19 @@ public sealed class UpdateService
                     continue;
                 }
 
-                _settings.Update(s => s.LastUpdateCheck = DateTime.Now);
-
                 var current = CurrentVersion;
+
+                // 老版本发布包里附过一份 update.json 样例（version 是打包时的版本、url 为空）。
+                // 它在候选源里排在 GitHub 前面，且一旦解析成功就立刻返回"已是最新"，
+                // 会让用户永远查不到 GitHub 上的新版本。这种既没有下载地址、版本又不高于
+                // 当前的本地文件按占位文件处理，跳过继续问下一个源。
+                if (isLocal && string.IsNullOrWhiteSpace(info.DownloadUrl) && info.Version <= current)
+                {
+                    errors.Add($"{Path.GetFileName(url)} 是占位文件（没有下载地址）");
+                    continue;
+                }
+
+                _settings.Update(s => s.LastUpdateCheck = DateTime.Now);
                 if (info.Version > current)
                 {
                     return new UpdateCheckResult
