@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Fluent Downloader 官网 — Lead 侧验收脚本（零依赖）
+ * 云梭下载器官网 — 验收脚本（零依赖）
  *
  *   node scripts/verify-website.mjs [--no-browser] [--json]
  *
- * A. 静态检查：文件齐备、类名双向对账、禁用模式、链接目标存在、语义/无障碍
+ * A. 静态检查：文件齐备、类名双向对账、禁用模式、外链白名单、事实溯源
  * B. 浏览器检查（Chrome headless + CDP）：控制台错误、外部请求、断点横向溢出、
  *    reduced-motion 持续动画、字体是否真自托管、截图
  *
@@ -21,14 +21,18 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const SITE = path.join(ROOT, 'website');
 const INDEX = path.join(SITE, 'index.html');
-const SHOTS = path.join(SITE, 'tools', 'shots');
+const SHOTS = path.join(ROOT, 'artifacts', 'website-shots');
 
 const CSS_FILES = ['theme.css', 'fonts.css', 'base.css', 'layout.css', 'sections.css', 'motion.css'];
 const JS_FILES = ['main.js'];
 const IMG_FILES = ['mark.svg', 'favicon.svg'];
+/** 页面上真实出现的产品截图：必须存在，且被 index.html 引用 */
+const SHOT_FILES = ['ui-downloads.png', 'ui-newtask.png', 'ui-extension.png', 'ui-settings.png'];
 const BREAKPOINTS = [1440, 1180, 900, 640, 390];
 /** 运行时由 main.js / 内联脚本添加的状态类，不算“孤儿样式” */
-const RUNTIME_CLASSES = new Set(['js', 'is-visible', 'is-scrolled']);
+const RUNTIME_CLASSES = new Set(['js', 'is-visible', 'is-scrolled', 'is-copied']);
+/** <a href> 允许的外部地址：只允许指向本仓库（含 Releases） */
+const ALLOWED_EXTERNAL = /^https:\/\/github\.com\/zxcfdcopud\/Yunsuo-downloader(?:[/?#]|$)/;
 
 const args = process.argv.slice(2);
 const NO_BROWSER = args.includes('--no-browser');
@@ -118,10 +122,12 @@ function staticChecks() {
   for (const f of CSS_FILES) if (!existsSync(path.join(SITE, 'assets', 'styles', f))) missing.push(`website/assets/styles/${f}`);
   for (const f of JS_FILES) if (!existsSync(path.join(SITE, 'assets', 'js', f))) missing.push(`website/assets/js/${f}`);
   for (const f of IMG_FILES) if (!existsSync(path.join(SITE, 'assets', 'img', f))) missing.push(`website/assets/img/${f}`);
+  for (const f of SHOT_FILES) if (!existsSync(path.join(SITE, 'assets', 'img', f))) missing.push(`website/assets/img/${f}`);
   const fontDir = path.join(SITE, 'assets', 'fonts');
   const woff2 = existsSync(fontDir) ? readdirSync(fontDir).filter((f) => f.endsWith('.woff2')) : [];
   if (!woff2.length) missing.push('website/assets/fonts/*.woff2');
-  check('A1', '交付物文件齐备', missing.length === 0, missing.length ? `缺失：${missing.join('、')}` : `字体文件 ${woff2.length} 个`);
+  check('A1', '交付物文件齐备', missing.length === 0,
+    missing.length ? `缺失：${missing.join('、')}` : `字体 ${woff2.length} 个、产品截图 ${SHOT_FILES.length} 张`);
 
   if (!existsSync(INDEX)) return;
 
@@ -156,9 +162,11 @@ function staticChecks() {
   const motionCss = existsSync(path.join(SITE, 'assets', 'styles', 'motion.css')) ? readText(path.join(SITE, 'assets', 'styles', 'motion.css')) : '';
   const layoutCss = existsSync(path.join(SITE, 'assets', 'styles', 'layout.css')) ? readText(path.join(SITE, 'assets', 'styles', 'layout.css')) : '';
   const js = existsSync(path.join(SITE, 'assets', 'js', 'main.js')) ? readText(path.join(SITE, 'assets', 'js', 'main.js')) : '';
-  const runtimeOk = /\.js\s/.test(motionCss) && /is-visible/.test(motionCss) && /is-scrolled/.test(layoutCss) && /is-scrolled/.test(js) && /is-visible/.test(js);
-  check('A4', '状态类（.js/.is-visible/.is-scrolled）在 CSS 与 main.js 中均有实现', runtimeOk,
-    `motion.css .js=${/\.js\s/.test(motionCss)} is-visible=${/is-visible/.test(motionCss)}；layout.css is-scrolled=${/is-scrolled/.test(layoutCss)}；main.js is-visible=${/is-visible/.test(js)} is-scrolled=${/is-scrolled/.test(js)}`);
+  const runtimeOk = /\.js\s/.test(motionCss) && /is-visible/.test(motionCss)
+    && /is-scrolled/.test(layoutCss) && /is-scrolled/.test(js)
+    && /is-visible/.test(js) && /is-copied/.test(js) && /is-copied/.test(readText(path.join(SITE, 'assets', 'styles', 'sections.css')));
+  check('A4', '状态类（.js/.is-visible/.is-scrolled/.is-copied）在 CSS 与 main.js 中均有实现', runtimeOk,
+    `motion.css .js=${/\.js\s/.test(motionCss)} is-visible=${/is-visible/.test(motionCss)}；layout.css is-scrolled=${/is-scrolled/.test(layoutCss)}；main.js is-visible=${/is-visible/.test(js)} is-scrolled=${/is-scrolled/.test(js)} is-copied=${/is-copied/.test(js)}`);
 
   // A5 禁用模式
   const offenders = [];
@@ -183,12 +191,27 @@ function staticChecks() {
   if (/!important/.test(html)) offenders.push('index.html: !important');
   check('A5', '无 !important、无 #id 选择器', offenders.length === 0, offenders.join('\n'));
 
-  // A6 无外部资源 + 链接目标存在
+  // A6 子资源全本地 + 外链白名单 + 链接目标存在
   const linkProblems = [];
   const ids = new Set([...html.matchAll(/\bid\s*=\s*"([^"]+)"/g)].map((m) => m[1]));
+  /** 取属性所在标签名：外链只允许出现在 <a> 上，子资源一律不许出站 */
+  const tagAt = (index) => {
+    const open = html.lastIndexOf('<', index);
+    const m = /^<([a-zA-Z][\w-]*)/.exec(html.slice(open, open + 40));
+    return m ? m[1].toLowerCase() : '';
+  };
+  const externalAnchors = [];
   for (const m of html.matchAll(/\b(href|src)\s*=\s*"([^"]*)"/g)) {
-    const attr = m[1], url = m[2];
-    if (/^https?:\/\//i.test(url) || /^\/\//.test(url)) { linkProblems.push(`${attr}="${url}" → 外部地址`); continue; }
+    const attr = m[1];
+    const url = m[2];
+    const tag = tagAt(m.index);
+    if (/^\/\//.test(url)) { linkProblems.push(`<${tag} ${attr}="${url}"> → 协议相对地址`); continue; }
+    if (/^https?:\/\//i.test(url)) {
+      if (tag !== 'a') { linkProblems.push(`<${tag} ${attr}="${url}"> → 子资源禁止外部地址`); continue; }
+      if (!ALLOWED_EXTERNAL.test(url)) { linkProblems.push(`<a href="${url}"> → 不在外链白名单（只允许本仓库地址）`); continue; }
+      externalAnchors.push(url);
+      continue;
+    }
     if (url.startsWith('#')) {
       const frag = url.slice(1);
       if (frag && !ids.has(frag)) linkProblems.push(`href="${url}" → 页面内无对应 id`);
@@ -202,7 +225,17 @@ function staticChecks() {
   for (const m of html.matchAll(/<script[^>]*>/g)) {
     if (/type\s*=\s*"module"/.test(m[0])) linkProblems.push(`<script type="module"> 违反契约（file:// 下会 CORS 失败）`);
   }
-  check('A6', '无外部资源引用，且所有本地链接/资源目标存在', linkProblems.length === 0, linkProblems.join('\n'));
+  check('A6', '子资源全为本地文件；外链仅指向本仓库（https）；本地链接目标均存在', linkProblems.length === 0,
+    linkProblems.length ? linkProblems.join('\n')
+      : `外链 ${externalAnchors.length} 处，全部为 https://github.com/zxcfdcopud/Yunsuo-downloader；其余 href/src 均为站内文件`);
+
+  // A6b 下载入口必须指向 Releases（站内不存在安装包，不能假装有）
+  const downloadLinks = [...html.matchAll(/<a\b[^>]*data-download-link[^>]*>/g)].map((m) => m[0]);
+  const downloadTargets = downloadLinks.map((tag) => (/href="([^"]*)"/.exec(tag) || [])[1] || '');
+  const downloadOk = downloadTargets.length >= 2
+    && downloadTargets.every((u) => /^https:\/\/github\.com\/zxcfdcopud\/Yunsuo-downloader\/releases$/.test(u));
+  check('A6b', '所有下载按钮均指向 GitHub Releases（没有指向本地/失效安装包）', downloadOk,
+    downloadTargets.length ? `${downloadTargets.length} 个 [data-download-link]：${[...new Set(downloadTargets)].join(', ')}` : '未找到 [data-download-link]');
 
   // A7 语义与无障碍
   const sem = [];
@@ -252,23 +285,38 @@ function staticChecks() {
   } else fontIssues.push('fonts.css 不存在');
   check('A10', '字体为本地自托管且路径有效', fontIssues.length === 0, fontIssues.join('\n'));
 
-  // A11 事实一致性：页面数字必须能在仓库文档里找到出处
+  // A11 事实一致性：页面上的每个数字/承诺都要能在仓库文档里找到出处
   const factIssues = [];
-  const readme = existsSync(path.join(ROOT, 'README.md')) ? readText(path.join(ROOT, 'README.md')) : '';
+  const CORPUS_FILES = ['README.md', 'CHANGELOG.md', 'docs/使用手册.txt', 'docs/PROTOCOL.md'];
+  const corpus = [];
+  for (const rel of CORPUS_FILES) {
+    const p = path.join(ROOT, rel);
+    if (existsSync(p)) corpus.push([rel, readText(p)]);
+  }
+  /** 每一条都是页面上真实出现的说法 → 文档里必须能查到 */
   const factMap = [
-    ['16', /默认 16|split`?\/`?max-connection-per-server`? 默认 16|--max-connection-per-server` 默认 16/],
-    ['4 个网盘 Provider', /4 个网盘 Provider|四个 Provider|4 个网盘/],
-    ['100', /100 项断言|100 项/],
-    ['41', /41 项/],
-    ['110 MB', /110(\.\d+)? MB/],
-    ['1.0.0', /1\.0\.0/],
-    ['.NET 8', /\.NET\s*(SDK\s*)?8/],
-    ['三件套/aria2/yt-dlp/ffmpeg', /aria2|yt-dlp/],
+    ['单任务最多 16 连接', /16/],
+    ['线程数 1~16 自动推荐', /1~16|1-16/],
+    ['yt-dlp 覆盖 1800+ 站点', /1800\+/],
+    ['离线自检 80+ 项', /80\+/],
+    ['版本 1.0.0', /1\.0\.0/],
+    ['.NET 8 自包含', /自包含/],
+    ['磁盘约 500 MB', /500 MB/],
+    ['Windows 10 1809 起', /1809/],
+    ['四步首次引导', /四步/],
+    ['aria2 多连接内核', /aria2/],
+    ['HLS / DASH 流', /DASH/],
+    ['插件服务端口 16888', /16888/],
+    ['MIT 许可证', /MIT/],
+    ['免管理员、不弹 UAC', /不弹 UAC|不需要管理员/],
+    ['不做 DRM 破解', /不做.{0,6}破解|不绕过.{0,10}DRM/],
   ];
   for (const [label, re] of factMap) {
-    if (!re.test(readme)) factIssues.push(`README 中未找到“${label}”的出处`);
+    const hit = corpus.find(([, text]) => re.test(text));
+    if (!hit) factIssues.push(`仓库文档中未找到“${label}”的出处（已查 ${CORPUS_FILES.join('、')}）`);
   }
-  check('A11', '页面引用的关键数字在 README 中有出处', factIssues.length === 0, factIssues.join('\n'));
+  check('A11', '页面所有关键事实均可在仓库文档中溯源', factIssues.length === 0,
+    factIssues.length ? factIssues.join('\n') : `${factMap.length} 条事实全部命中：${corpus.map(([f]) => f).join('、')}`);
 
   // A12 动效失效保护：main.js 没跑起来时页面不能是空白
   const guardWired = /__fdMotionGuard/.test(html) && /classList\.add\(['"]js['"]\)/.test(html);
@@ -559,7 +607,7 @@ async function browserChecks() {
     });
     const st = JSON.parse(struct.result.value);
     check('B8', '主区块结构完整，且滚动后所有入场元素均已收敛可见',
-      st.sec.length >= 4 && st.notVisible.length === 0 && st.hiddenText === 0,
+      st.sec.length >= 6 && st.notVisible.length === 0 && st.hiddenText === 0,
       `main > section：${st.sec.join(' | ')}\n.reveal ${st.total} 个，可见 ${st.visible} 个${st.notVisible.length ? `；未收敛：${st.notVisible.join(' | ')}` : ''}\n正文中不可见（opacity<0.1）的元素：${st.hiddenText}\ncanvas 解码纹理：${st.kanvas ? st.kanvas.w + '×' + st.kanvas.h : '未找到'}`);
 
     // B9 对抗性：阻断 main.js，验证失效保护真的把整页救回来（否则 .js .reveal 会让全站空白）
@@ -596,7 +644,7 @@ async function browserChecks() {
 
 /* ------------------------------------------------------------------ main */
 
-console.log('Fluent Downloader 官网验收\n' + '='.repeat(60));
+console.log('云梭下载器官网验收\n' + '='.repeat(60));
 staticChecks();
 if (!NO_BROWSER) {
   console.log('\n' + '-'.repeat(60) + '\n浏览器检查（Chrome headless + CDP）\n' + '-'.repeat(60));

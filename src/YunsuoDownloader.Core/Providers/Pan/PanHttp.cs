@@ -100,7 +100,7 @@ internal sealed class PanSession
         if (raw is not null)
         {
             var rawResp = await raw.ConfigureAwait(false);
-            if (rawResp.Status != -1)
+            if (rawResp is not null && rawResp.Status != -1)
             {
                 if (_verbose) _log?.Invoke("   ↻ 自动解压失败，改用 identity 重新请求成功");
                 return rawResp;

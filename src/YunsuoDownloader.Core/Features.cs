@@ -14,7 +14,8 @@ public static class Features
     /// 网盘分享链接解析（含提取码、Cookie 登录态、网盘账号设置页）。
     /// 1.0 版本 = false（暂未开放）。
     /// </summary>
-    public const bool PanEnabled = false;
+    /// <summary>用 static readonly 而不是 const：const 会让 <c>if (!PanEnabled)</c> 的另一分支变成"无法访问的代码"</summary>
+    public static readonly bool PanEnabled = false;
 
     /// <summary>网盘功能未开放时给用户看的统一提示。</summary>
     public const string PanDisabledMessage =
