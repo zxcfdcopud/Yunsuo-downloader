@@ -19,7 +19,11 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const SITE = path.join(ROOT, 'website');
+const CLI = process.argv.slice(2);
+/** --site 可指定任意站点根目录，用来验收打包产物（dist/website）而不只是源码目录 */
+const SITE_ARG = CLI.indexOf('--site');
+const SITE = SITE_ARG >= 0 && CLI[SITE_ARG + 1] ? path.resolve(ROOT, CLI[SITE_ARG + 1]) : path.join(ROOT, 'website');
+const IS_BUILT = SITE !== path.join(ROOT, 'website');
 const INDEX = path.join(SITE, 'index.html');
 const SHOTS = path.join(ROOT, 'artifacts', 'website-shots');
 
@@ -34,7 +38,7 @@ const RUNTIME_CLASSES = new Set(['js', 'is-visible', 'is-scrolled', 'is-copied']
 /** <a href> 允许的外部地址：只允许指向本仓库（含 Releases） */
 const ALLOWED_EXTERNAL = /^https:\/\/github\.com\/zxcfdcopud\/Yunsuo-downloader(?:[/?#]|$)/;
 
-const args = process.argv.slice(2);
+const args = CLI;
 const NO_BROWSER = args.includes('--no-browser');
 const AS_JSON = args.includes('--json');
 
@@ -324,23 +328,26 @@ function staticChecks() {
   check('A12', '动效失效保护已接线（main.js 未执行则摘掉 js 根类，避免整页空白）', guardWired && guardCleared,
     `index.html: js 根类=${/classList\.add\(['"]js['"]\)/.test(html)}, __fdMotionGuard=${/__fdMotionGuard/.test(html)}; main.js: clearTimeout=${guardCleared}`);
 
-  // A13 无遗留临时文件 / 无构建垃圾（website/tools/ 是验收工程师的合法工作区，跳过）
-  const strays = [];
-  const TOOLS = path.join(SITE, 'tools');
-  const walk = (dir) => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      const p = path.join(dir, e.name);
-      if (p === TOOLS) continue;
-      if (e.isDirectory()) {
-        if (/^_|^node_modules$|^\.cache$/.test(e.name)) strays.push(toPosix(path.relative(ROOT, p)) + '/（临时目录）');
-        else walk(p);
-      } else if (/\.(mjs|txt|log|bak|tmp)$/i.test(e.name)) {
-        strays.push(toPosix(path.relative(ROOT, p)));
+  // A13 无遗留临时文件 / 无构建垃圾
+  // （验收打包产物时跳过：dist/website/docs 里的 .txt 是随站点发布的正式文档）
+  if (IS_BUILT) {
+    check('A13', 'website/ 下无遗留临时文件或垃圾', true, '验收目标是打包产物，本项跳过（产物内的 docs/ 是正式发布内容）');
+  } else {
+    const strays = [];
+    const walk = (dir) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          if (/^_|^node_modules$|^\.cache$/.test(e.name)) strays.push(toPosix(path.relative(ROOT, p)) + '/（临时目录）');
+          else walk(p);
+        } else if (/\.(mjs|txt|log|bak|tmp)$/i.test(e.name)) {
+          strays.push(toPosix(path.relative(ROOT, p)));
+        }
       }
-    }
-  };
-  walk(SITE);
-  check('A13', 'website/ 下无遗留临时文件或垃圾', strays.length === 0, strays.join('\n'));
+    };
+    walk(SITE);
+    check('A13', 'website/ 下无遗留临时文件或垃圾', strays.length === 0, strays.join('\n'));
+  }
 }
 
 /* ------------------------------------------------------------------ B. 浏览器 */

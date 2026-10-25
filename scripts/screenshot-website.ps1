@@ -7,9 +7,9 @@
     powershell -ExecutionPolicy Bypass -File scripts\screenshot-website.ps1 -Open
 
   实际工作由 scripts\verify-website.mjs 完成（零依赖，走 Chrome headless + CDP）：
-    - 静态检查：类名双向对账、禁用模式、链接目标、语义/无障碍、事实出处
+    - 静态检查：类名双向对账、禁用模式、外链白名单、语义/无障碍、事实出处
     - 浏览器检查：控制台、外部请求、断点横向溢出、reduced-motion、字体真加载、重阴影/大圆角
-    - 截图输出到 website\tools\shots\desktop-1440.png 与 mobile-390.png
+    - 截图输出到 artifacts\website-shots\desktop-1440.png 与 mobile-390.png
 #>
 [CmdletBinding()]
 param(
@@ -21,7 +21,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $script = Join-Path $PSScriptRoot 'verify-website.mjs'
-$shots = Join-Path $root 'website\tools\shots'
+$shots = Join-Path $root 'artifacts\website-shots'
 
 if (-not (Test-Path $script)) { throw "找不到验收脚本：$script" }
 
