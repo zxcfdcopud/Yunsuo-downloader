@@ -170,6 +170,15 @@ if ($extCount -gt 0 -and -not $extDuped) {
 $docsDst = Join-Path $OutDir 'docs'
 New-Item -ItemType Directory -Force -Path $docsDst | Out-Null
 Copy-Item -Path (Join-Path $Root 'docs\*') -Destination $docsDst -Recurse -Force
+
+# 有些 docs 是给开发者看的，不能随安装包发给用户：
+#   · PAN_PROVIDERS.md —— 网盘接口实现细节（1.0 版本网盘功能还是隐藏的，不能泄露）
+#   · 发布清单.md      —— 内部发布步骤（含 git 命令、私钥注意事项）
+foreach ($devDoc in 'PAN_PROVIDERS.md', '发布清单.md') {
+    $p = Join-Path $docsDst $devDoc
+    if (Test-Path $p) { Remove-Item $p -Force; Write-Warn2 "已从发布目录剔除开发文档：$devDoc" }
+}
+
 Copy-Item (Join-Path $Root 'README.md') $OutDir -Force
 
 # 一份默认更新源示例
