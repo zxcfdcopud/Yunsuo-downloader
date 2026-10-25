@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2025 Yunsuo Downloader (云梭下载器)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+----------------------------------------------------------------------------
+注意 / Note
+----------------------------------------------------------------------------
+上述 MIT 许可仅适用于本仓库的源代码。
+
+本程序在运行时以「独立进程」方式调用下列第三方程序，它们各自遵循其原始
+许可证，不因本仓库的 MIT 许可而改变：
+
+  * aria2c.exe  — GPL-2.0-or-later   https://github.com/aria2/aria2
+  * yt-dlp.exe  — Unlicense         https://github.com/yt-dlp/yt-dlp
+  * ffmpeg.exe  — LGPL/GPL          https://ffmpeg.org/
+
+如果你再分发本程序的安装包或便携版（其中包含 tools\ 目录），请一并附带
+这些程序的许可证文本与源码获取地址。完整清单见：
+docs/第三方开源项目清单.txt

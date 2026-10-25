@@ -1,0 +1,175 @@
+<ui:FluentWindow x:Class="YunsuoDownloader.App.Views.FirstRunWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="欢迎使用 云梭下载器"
+                 Width="760" Height="560" MinWidth="700" MinHeight="520"
+                 WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+                 ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica" WindowCornerPreference="Round">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="欢迎使用 云梭下载器" ShowMinimize="False" ShowMaximize="False" />
+
+        <!-- 步骤指示 -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+            <StackPanel x:Name="Dot1" Orientation="Horizontal">
+                <Ellipse Width="10" Height="10" Fill="{DynamicResource AccentFillColorDefaultBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="Label1" Text="欢迎" Margin="8,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+            <Rectangle Width="30" Height="1" Fill="{DynamicResource ControlFillColorSecondaryBrush}" Margin="14,0" VerticalAlignment="Center" />
+            <StackPanel x:Name="Dot2" Orientation="Horizontal">
+                <Ellipse x:Name="Circle2" Width="10" Height="10" Fill="{DynamicResource ControlFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="Label2" Text="下载位置" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.6" />
+            </StackPanel>
+            <Rectangle Width="30" Height="1" Fill="{DynamicResource ControlFillColorSecondaryBrush}" Margin="14,0" VerticalAlignment="Center" />
+            <StackPanel x:Name="Dot3" Orientation="Horizontal">
+                <Ellipse x:Name="Circle3" Width="10" Height="10" Fill="{DynamicResource ControlFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="Label3" Text="性能" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.6" />
+            </StackPanel>
+            <Rectangle Width="30" Height="1" Fill="{DynamicResource ControlFillColorSecondaryBrush}" Margin="14,0" VerticalAlignment="Center" />
+            <StackPanel x:Name="Dot4" Orientation="Horizontal">
+                <Ellipse x:Name="Circle4" Width="10" Height="10" Fill="{DynamicResource ControlFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                <TextBlock x:Name="Label4" Text="浏览器插件" Margin="8,0,0,0" VerticalAlignment="Center" Opacity="0.6" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 步骤内容 -->
+        <Grid Grid.Row="2" Margin="36,20,36,10">
+
+            <!-- 步骤 1：欢迎 -->
+            <StackPanel x:Name="Step1">
+                <TextBlock Text="欢迎使用 云梭下载器" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap" Margin="0,14,0,0" LineHeight="24"
+                           Text="这是一个 Windows 上遵循 Microsoft Fluent 2 设计规范的下载器。它把几件成熟的开源工具编排到一起，做到“解析得到 + 下得快”：&#10;&#10;• 多线程分片下载（aria2 内核，单文件最多 16 连接）&#10;• 视频网站与 HLS/m3u8 解析（yt-dlp + ffmpeg）&#10;• 百度 / 阿里 / 夸克 / 123 网盘分享链接解析（用你自己的登录态）&#10;• 配套浏览器插件：网页上一键把视频或视频流送进下载器&#10;&#10;接下来用 3 步完成初始化，大约 30 秒。" />
+                <Border Margin="0,18,0,0" Padding="14" CornerRadius="6"
+                        Background="{DynamicResource SystemFillColorCautionBackgroundBrush}">
+                    <TextBlock TextWrapping="Wrap"
+                               Text="请仅下载你有权下载的内容。本程序不提供、不托管任何受版权保护的内容，也不绕过付费或 DRM 保护。" />
+                </Border>
+            </StackPanel>
+
+            <!-- 步骤 2：下载位置（需求 9） -->
+            <StackPanel x:Name="Step2" Visibility="Collapsed">
+                <TextBlock Text="把文件下载到哪里？" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock x:Name="DirectoryIntroText" TextWrapping="Wrap" Margin="0,12,0,0" Opacity="0.8" />
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBox x:Name="DirectoryBox" Grid.Column="0" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                        <ui:Button Appearance="Primary" Content="浏览…" Click="OnBrowseDirectory" />
+                        <ui:Button Appearance="Secondary" Content="恢复默认" Margin="6,0,0,0" Click="OnResetDirectory" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="DirectoryHint" Style="{StaticResource CaptionTextStyle}" Margin="0,8,0,0" />
+                <CheckBox x:Name="CreateSubfolderBox" Content="每个视频任务单独建一个子文件夹" Margin="0,18,0,0" />
+            </StackPanel>
+
+            <!-- 步骤 3：性能（需求 7） -->
+            <StackPanel x:Name="Step3" Visibility="Collapsed">
+                <TextBlock Text="要不要更快一点？" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Opacity="0.8"
+                           Text="这些参数决定了下载速度。推荐值已经填好，直接下一步也可以；以后随时能在「设置 → 下载性能」里调整。" />
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="单任务连接数" Style="{StaticResource FieldLabelStyle}" />
+                    <ui:NumberBox x:Name="ConnectionsBox" Grid.Column="1" Width="140" Minimum="1" Maximum="64" SmallChange="1" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource CaptionTextStyle}" Margin="14,0,0,0"
+                               VerticalAlignment="Center" Text="推荐 16。分片越多越快，但服务器可能限制。" />
+                </Grid>
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="同时下载任务数" Style="{StaticResource FieldLabelStyle}" />
+                    <ui:NumberBox x:Name="ConcurrentBox" Grid.Column="1" Width="140" Minimum="1" Maximum="32" SmallChange="1" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource CaptionTextStyle}" Margin="14,0,0,0"
+                               VerticalAlignment="Center" Text="推荐 3。" />
+                </Grid>
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="HLS 并发分片数" Style="{StaticResource FieldLabelStyle}" />
+                    <ui:NumberBox x:Name="FragmentsBox" Grid.Column="1" Width="140" Minimum="1" Maximum="64" SmallChange="1" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource CaptionTextStyle}" Margin="14,0,0,0"
+                               VerticalAlignment="Center" Text="推荐 16。m3u8 直播/点播的提速关键。" />
+                </Grid>
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="全局限速 (KB/s)" Style="{StaticResource FieldLabelStyle}" />
+                    <ui:NumberBox x:Name="LimitBox" Grid.Column="1" Width="140" Minimum="0" Maximum="1048576" SmallChange="128" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource CaptionTextStyle}" Margin="14,0,0,0"
+                               VerticalAlignment="Center" Text="0 表示不限速。" />
+                </Grid>
+                <CheckBox x:Name="StartWithWindowsBox" Content="开机自动启动" Margin="180,18,0,0" />
+            </StackPanel>
+
+            <!-- 步骤 4：浏览器插件（需求 2/3） -->
+            <StackPanel x:Name="Step4" Visibility="Collapsed">
+                <TextBlock Text="最后一步：装浏览器插件" FontSize="24" FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap" Margin="0,12,0,0" Opacity="0.8"
+                           Text="装上插件后，在 B站 / YouTube / 抖音 / 快手 / 小红书 等网页上点一下，就能把视频或 m3u8 直播直接送进下载器，不用复制链接。现在不装也没关系，随时可以在「浏览器插件」页回来配置。" />
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBox x:Name="ExtensionPathBox" Grid.Column="0" IsReadOnly="True" FontSize="12" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                        <ui:Button Appearance="Primary" Content="打开插件目录" Click="OnOpenExtensionFolder" />
+                        <ui:Button Appearance="Secondary" Content="导出插件到…" Margin="6,0,0,0"
+                                   Click="OnExportExtension" />
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="ExtensionSourceText" Style="{StaticResource CaptionTextStyle}" Margin="0,8,0,0" />
+                <TextBlock TextWrapping="Wrap" Margin="0,10,0,0" LineHeight="22"
+                           Text="安装：点上面的「打开插件目录」；如果那个文件夹不存在，就点「导出插件到…」把程序内置的插件释放到你指定的文件夹。然后浏览器地址栏输入 chrome://extensions（Edge 用 edge://extensions）→ 打开「开发者模式」→ 点「加载已解压的扩展程序」→ 选中那个插件文件夹。装好后列表里会出现一张名为「视频嗅探下载器助手」的卡片。" />
+                <TextBlock Text="连接令牌（复制到插件设置里）" Margin="0,18,0,6" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBox x:Name="TokenBox" Grid.Column="0" IsReadOnly="True" FontFamily="Consolas" />
+                    <ui:Button Grid.Column="1" Appearance="Primary" Content="复制令牌" Margin="8,0,0,0"
+                               Click="OnCopyToken" />
+                </Grid>
+                <TextBlock x:Name="ServiceStatusText" Style="{StaticResource CaptionTextStyle}" Margin="0,10,0,0" />
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Grid.Row="3" x:Name="HintText" Margin="36,0,36,0" Style="{StaticResource CaptionTextStyle}" />
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="36,10,36,22">
+            <ui:Button x:Name="BackButton" Appearance="Secondary" Content="上一步" MinWidth="110"
+                       Click="OnBack" Visibility="Collapsed" />
+            <ui:Button x:Name="NextButton" Appearance="Primary" Content="下一步" MinWidth="130" Margin="8,0,0,0"
+                       Click="OnNext" />
+            <ui:Button x:Name="SkipButton" Appearance="Transparent" Content="跳过引导" MinWidth="100" Margin="8,0,0,0"
+                       Click="OnSkip" />
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

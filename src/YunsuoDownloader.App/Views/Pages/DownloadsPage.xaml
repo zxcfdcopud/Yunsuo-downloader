@@ -1,0 +1,194 @@
+<UserControl x:Class="YunsuoDownloader.App.Views.Pages.DownloadsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:YunsuoDownloader.App.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:DownloadsViewModel}"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
+
+    <Grid Margin="2">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ==================== 标题与总览 ==================== -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="最近下载" Style="{StaticResource PageTitleStyle}" />
+                <TextBlock Text="{Binding SummaryText}" Style="{StaticResource CaptionTextStyle}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                <StackPanel Margin="0,0,20,0" HorizontalAlignment="Right">
+                    <TextBlock Text="当前速度" Style="{StaticResource HeaderTextStyle}" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding TotalSpeedText}" FontSize="20" FontWeight="SemiBold"
+                               HorizontalAlignment="Right" />
+                </StackPanel>
+                <StackPanel Margin="0,0,20,0">
+                    <TextBlock Text="正在下载" Style="{StaticResource HeaderTextStyle}" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding ActiveCount}" FontSize="20" FontWeight="SemiBold"
+                               HorizontalAlignment="Right" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="排队中" Style="{StaticResource HeaderTextStyle}" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding QueuedCount}" FontSize="20" FontWeight="SemiBold"
+                               HorizontalAlignment="Right" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- ==================== 工具栏 ==================== -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ui:TextBox Grid.Column="0" Width="230" PlaceholderText="搜索文件名 / 链接 / 站点"
+                        Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            <ComboBox Grid.Column="1" Width="120" Margin="8,0,0,0" SelectedIndex="{Binding FilterIndex}">
+                <ComboBoxItem Content="全部" />
+                <ComboBoxItem Content="下载中" />
+                <ComboBoxItem Content="已完成" />
+                <ComboBoxItem Content="失败" />
+            </ComboBox>
+
+            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <ui:Button Appearance="Secondary" Content="粘贴链接下载"
+                           Command="{Binding AddUrlFromClipboardCommand}" />
+                <ui:Button Appearance="Secondary" Content="全部暂停" Margin="6,0,0,0"
+                           Command="{Binding PauseAllCommand}" />
+                <ui:Button Appearance="Secondary" Content="全部继续" Margin="6,0,0,0"
+                           Command="{Binding ResumeAllCommand}" />
+                <ui:Button Appearance="Secondary" Content="清除已完成" Margin="6,0,0,0"
+                           Command="{Binding ClearCompletedCommand}" />
+                <ui:Button Appearance="Secondary" Content="打开目录" Margin="6,0,0,0"
+                           Command="{Binding OpenDownloadFolderCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ==================== 列表 ==================== -->
+        <Grid Grid.Row="2">
+            <ListView ItemsSource="{Binding ItemsView}" Style="{StaticResource FlatListViewStyle}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="12,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="176" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 状态图标 -->
+                                <TextBlock Grid.Column="0" FontFamily="{StaticResource IconFontFamily}" FontSize="19"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding StatusGlyph}"
+                                           Foreground="{Binding Status, Converter={StaticResource StatusToBrush}}" />
+
+                                <!-- 名称 + 进度 + 明细 -->
+                                <StackPanel Grid.Column="1" Margin="2,0,14,0">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <ProgressBar Style="{StaticResource ThinProgressBarStyle}" Maximum="100"
+                                                 Value="{Binding ProgressPercent, Mode=OneWay}" Margin="0,7,0,5" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding StatusText}" FontSize="12"
+                                                   Foreground="{Binding Status, Converter={StaticResource StatusToBrush}}" />
+                                        <TextBlock Text="·" FontSize="12" Opacity="0.5" Margin="6,0" />
+                                        <TextBlock Text="{Binding SizeText}" FontSize="12" Opacity="0.75" />
+                                        <TextBlock Text="·" FontSize="12" Opacity="0.5" Margin="6,0" />
+                                        <TextBlock Text="{Binding SpeedText}" FontSize="12" Opacity="0.75" />
+                                        <TextBlock Text="·" FontSize="12" Opacity="0.5" Margin="6,0" />
+                                        <TextBlock Text="{Binding EtaText}" FontSize="12" Opacity="0.75" />
+                                        <TextBlock Text="·" FontSize="12" Opacity="0.5" Margin="6,0" />
+                                        <TextBlock Text="{Binding ConnectionsText}" FontSize="12" Opacity="0.6" />
+                                        <TextBlock Text="{Binding ProviderName}" FontSize="12" Opacity="0.5"
+                                                   Margin="6,0" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ErrorMessage}" FontSize="11" Margin="0,4,0,0"
+                                               TextWrapping="Wrap" MaxHeight="34" Foreground="#E81123"
+                                               Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibility}}" />
+                                </StackPanel>
+
+                                <!-- 需求 6：下载时间 -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock Text="下载时间" Style="{StaticResource HeaderTextStyle}" />
+                                    <TextBlock Text="{Binding CreatedAtText}" FontSize="12" />
+                                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,3,0,0"
+                                               Text="{Binding DurationText}" />
+                                </StackPanel>
+
+                                <!-- 操作 -->
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- 提取码补填按钮：1.0 版网盘功能暂未开放，先隐藏（代码保留，下个版本去掉
+                                         Visibility="Collapsed" 即可恢复；Visible 条件仍是 NeedPassword） -->
+                                    <ui:Button Appearance="Primary" Padding="8,6" ToolTip="填写提取码并重新解析"
+                                               Visibility="Collapsed"
+                                               Command="{Binding DataContext.FillPasswordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE8D7;" />
+                                    </ui:Button>
+                                    <ui:Button Appearance="Transparent" Padding="8,6" ToolTip="暂停"
+                                               Visibility="{Binding CanPause, Converter={StaticResource BoolToVisibility}}"
+                                               Command="{Binding DataContext.PauseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE769;" />
+                                    </ui:Button>
+                                    <ui:Button Appearance="Transparent" Padding="8,6" ToolTip="继续 / 重试"
+                                               Visibility="{Binding CanResume, Converter={StaticResource BoolToVisibility}}"
+                                               Command="{Binding DataContext.ResumeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE768;" />
+                                    </ui:Button>
+                                    <ui:Button Appearance="Transparent" Padding="8,6" ToolTip="打开文件"
+                                               Visibility="{Binding IsFinished, Converter={StaticResource BoolToVisibility}}"
+                                               Command="{Binding DataContext.OpenFileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE8E5;" />
+                                    </ui:Button>
+                                    <ui:Button Appearance="Transparent" Padding="8,6" ToolTip="打开所在文件夹"
+                                               Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE838;" />
+                                    </ui:Button>
+                                    <ui:Button Appearance="Transparent" Padding="8,6" ToolTip="详情"
+                                               Command="{Binding DataContext.ShowDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE946;" />
+                                    </ui:Button>
+                                    <ui:Button Appearance="Transparent" Padding="8,6" ToolTip="从列表移除"
+                                               Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}">
+                                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE74D;" />
+                                    </ui:Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <!-- 空状态 -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="42" Text="&#xE896;" Opacity="0.35"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="还没有下载任务" FontSize="16" Margin="0,12,0,4" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center"
+                           Text="把链接粘贴到「新建任务」，或安装浏览器插件后从网页一键发送。也可以直接把链接拖进这个窗口。" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

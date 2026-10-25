@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视频嗅探下载器助手 · 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="page">
+    <header class="head">
+      <div class="head-left">
+        <img src="../icons/icon48.png" alt="" class="logo">
+        <div>
+          <h1>视频嗅探下载器助手 · 设置</h1>
+          <p class="sub">与桌面「下载器」通过本机 WebSocket 通信，默认 <code>ws://127.0.0.1:16888/media</code></p>
+        </div>
+      </div>
+      <div id="connBadge" class="conn conn--idle"><span class="dot"></span><span id="connText">未连接</span></div>
+    </header>
+
+    <div id="tokenBanner" class="banner banner--error hidden">
+      令牌不匹配：请在下载器 <b>设置 → 浏览器插件</b> 中复制令牌，粘贴到下面的「访问令牌」并保存。
+    </div>
+
+    <section class="card">
+      <h2>连接设置</h2>
+      <div class="grid">
+        <label class="field">
+          <span>主机</span>
+          <input type="text" id="host" placeholder="127.0.0.1" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field">
+          <span>端口</span>
+          <input type="number" id="port" min="1" max="65535" step="1" placeholder="16888">
+        </label>
+        <label class="field field--wide">
+          <span>路径</span>
+          <input type="text" id="path" placeholder="/media" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="field field--wide">
+          <span>访问令牌（token，可为空）</span>
+          <span class="input-row">
+            <input type="password" id="token" placeholder="从下载器 设置 → 浏览器插件 复制" autocomplete="off" spellcheck="false">
+            <button type="button" id="btnToggleToken" class="btn btn--tiny">显示</button>
+          </span>
+        </label>
+      </div>
+      <p class="hint" id="wsPreview">当前地址：ws://127.0.0.1:16888/media</p>
+    </section>
+
+    <section class="card">
+      <h2>行为选项</h2>
+      <label class="switch">
+        <input type="checkbox" id="autoReconnect">
+        <span>断线自动重连（指数退避，最大 30 秒）</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="notify">
+        <span>接收下载器通知（任务接收、错误提示等桌面通知）</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="showBadge">
+        <span>在工具栏图标上显示探测到的媒体数量角标</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="autoSend">
+        <span>探测到媒体后自动发送到下载器（可能产生较多任务，默认关闭）</span>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>状态</h2>
+      <div class="status-grid">
+        <div><span class="k">连接状态</span><span class="v" id="statConn">未连接</span></div>
+        <div><span class="k">下载器版本</span><span class="v" id="statAppVersion">—</span></div>
+        <div><span class="k">下载目录</span><span class="v" id="statDir">—</span></div>
+        <div><span class="k">待发送队列</span><span class="v" id="statPending">0</span></div>
+        <div><span class="k">最近消息</span><span class="v" id="statMessage">—</span></div>
+      </div>
+      <div class="actions">
+        <button id="btnTest" class="btn">保存并测试连接</button>
+        <button id="btnClearPending" class="btn btn--ghost">清空待发送队列</button>
+        <button id="btnReset" class="btn btn--ghost">恢复默认设置</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>使用说明</h2>
+      <ol class="tips">
+        <li>先在下载器中打开浏览器插件服务（默认监听 <code>127.0.0.1:16888</code>），必要时复制令牌。</li>
+        <li>打开含视频的网页并<b>播放视频</b>，插件会自动嗅探 HLS / DASH / MP4 等地址。</li>
+        <li>点击工具栏图标，在列表中点击「发送到下载器」；未连接时任务会排队，连接成功后自动补发。</li>
+        <li>部分站点使用 MSE（blob:）播放，需等播放器真正请求分片后才能拿到地址。</li>
+      </ol>
+    </section>
+
+    <footer class="foot">
+      <div class="actions">
+        <button id="btnSave" class="btn btn--primary">保存设置</button>
+        <span id="saveHint" class="hint"></span>
+      </div>
+      <p class="hint">插件版本 1.0.0 · 纯本地通信，不会上传任何浏览数据。</p>
+    </footer>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+/*
+ * content.css —— 注入到页面的轻量提示样式。
+ * 注意：所有规则都使用 vsd- 前缀并设了足够高的 z-index，
+ * 且容器设为 pointer-events:none，避免干扰站点本身交互。
+ * 深浅色通过 prefers-color-scheme 自适应。
+ */
+
+.vsd-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483647;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.2px;
+  color: #ffffff;
+  background: rgba(24, 26, 33, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  backdrop-filter: blur(6px);
+}
+
+.vsd-toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.vsd-toast[data-level="success"] {
+  border-color: rgba(52, 199, 89, 0.55);
+}
+
+.vsd-toast[data-level="error"] {
+  border-color: rgba(255, 69, 58, 0.6);
+}
+
+.vsd-toast[data-level="info"] {
+  border-color: rgba(10, 132, 255, 0.5);
+}
+
+@media (prefers-color-scheme: light) {
+  .vsd-toast {
+    color: #16181d;
+    background: rgba(255, 255, 255, 0.97);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 24px rgba(15, 20, 30, 0.16);
+  }
+}

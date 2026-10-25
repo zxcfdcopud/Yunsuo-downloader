@@ -1,0 +1,159 @@
+<UserControl x:Class="YunsuoDownloader.App.Views.Pages.ExtensionPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:YunsuoDownloader.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DataContext="{d:DesignInstance Type=vm:ExtensionViewModel}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="2">
+            <TextBlock Text="浏览器插件" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock Style="{StaticResource CaptionTextStyle}"
+                       Text="装好插件后，在网页上点一下就能把视频 / HLS 直播 / 网盘直链直接送进下载器，不用复制链接。" />
+
+            <!-- ==================== 服务状态 ==================== -->
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,14,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" FontFamily="{StaticResource IconFontFamily}" FontSize="30" VerticalAlignment="Center"
+                               Text="&#xEA86;" />
+                    <StackPanel Grid.Column="1" Margin="16,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="本地服务：" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                            <TextBlock Text="    已连接插件：" VerticalAlignment="Center" Opacity="0.75" />
+                            <TextBlock Text="{Binding ClientCount}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding StatusDetail}" Style="{StaticResource CaptionTextStyle}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding ClientInfo}" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Style="{StaticResource CaptionTextStyle}" Margin="0,4,0,0">
+                            <Run Text="最近收到的任务：" />
+                            <Run Text="{Binding LastReceived, Mode=OneWay}" />
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <ui:Button Appearance="Secondary" Content="重新启动服务"
+                                   Command="{Binding RestartCommand}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ==================== 令牌 ==================== -->
+            <TextBlock Text="连接令牌" Style="{StaticResource SectionTitleStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CaptionTextStyle}"
+                               Text="出于安全考虑，只有拿到令牌的插件才能把任务发给下载器。把下面的令牌填进插件的设置页即可。" />
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox Grid.Column="0" Text="{Binding Token, Mode=OneWay}" IsReadOnly="True"
+                                    FontFamily="Consolas" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                            <ui:Button Appearance="Primary" Content="复制令牌" Command="{Binding CopyTokenCommand}" />
+                            <ui:Button Appearance="Secondary" Content="复制地址" Margin="6,0,0,0"
+                                       Command="{Binding CopyAddressCommand}" />
+                            <ui:Button Appearance="Secondary" Content="重新生成" Margin="6,0,0,0"
+                                       Command="{Binding RegenerateTokenCommand}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ==================== 安装步骤 ==================== -->
+            <TextBlock Text="安装步骤（Chrome / Edge）" Style="{StaticResource SectionTitleStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding InstallSteps}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="22" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" FontFamily="{StaticResource IconFontFamily}" Text="&#xE915;"
+                                               VerticalAlignment="Top" Margin="0,2,0,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox Grid.Column="0" Text="{Binding ExtensionPath, Mode=OneWay}" IsReadOnly="True"
+                                    FontSize="12" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0">
+                            <ui:Button Appearance="Primary" Content="打开插件目录"
+                                       Command="{Binding OpenExtensionFolderCommand}" />
+                            <ui:Button Appearance="Secondary" Content="导出插件到…" Margin="6,0,0,0"
+                                       Command="{Binding ExportExtensionCommand}" />
+                            <ui:Button Appearance="Secondary" Content="复制路径" Margin="6,0,0,0"
+                                       Command="{Binding CopyExtensionPathCommand}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="插件来源：" Style="{StaticResource CaptionTextStyle}" />
+                        <TextBlock Text="{Binding ExtensionPathSource}" Style="{StaticResource CaptionTextStyle}" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource CaptionTextStyle}" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="{Binding ExtensionHint}" />
+                </StackPanel>
+            </Border>
+
+            <!-- ==================== 支持站点 ==================== -->
+            <TextBlock Text="可以探测到什么" Style="{StaticResource SectionTitleStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CaptionTextStyle}"
+                               Text="插件会在网页加载时嗅探媒体请求，并解析页面里的播放器，把这些都识别出来：" />
+                    <ItemsControl ItemsSource="{Binding SupportedSites}" Margin="0,6,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                    <TextBlock FontFamily="{StaticResource IconFontFamily}" Text="&#xE73E;" FontSize="12"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding}" Margin="10,0,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource CaptionTextStyle}" Margin="0,10,0,0"
+                               Text="HLS / m3u8 会被识别为流：下载器会用 yt-dlp + ffmpeg 并发拉取所有分片并合并成 mp4；如果是带 #EXT-X-KEY 的加密流，插件会在列表里标注“加密”。" />
+                </StackPanel>
+            </Border>
+
+            <!-- ==================== 常见问题 ==================== -->
+            <TextBlock Text="连不上？按这个顺序排查" Style="{StaticResource SectionTitleStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="1) 确认本页顶部显示“运行中”。如果显示未启动，点「重新启动服务」。" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="2) 插件 popup 顶部如果出现红色「令牌错误」，说明令牌不一致：回到本页复制令牌，粘到插件设置里保存。" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="3) 端口被占用（例如 16888 已被别的程序使用）：到「设置 → 浏览器插件」换成 16889 等端口，插件设置里也同步改。" />
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6"
+                               Text="4) 某些网站（例如需要登录的付费视频）需要把浏览器 Cookie 一起发过来：插件会自动带上，下载器再用它去请求。" />
+                    <TextBlock TextWrapping="Wrap"
+                               Text="5) 如果下载器没打开，插件会把任务排队；等下载器启动后会自动补发。" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

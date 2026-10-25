@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- 仅用于托盘图标 NotifyIcon -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>YunsuoDownloader.App</RootNamespace>
+    <AssemblyName>YunsuoDownloader</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 应用图标（installer\make_icon.py 生成）：exe 图标 + 托盘图标都用它 -->
+    <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <!--
+      UseWindowsForms 会让 SDK 自动 global using System.Windows.Forms / System.Drawing，
+      导致 Application / UserControl / DragEventArgs 等类型与 WPF 版本歧义。
+      因此这里关掉隐式 using，只显式声明标准命名空间（WinForms 仅在托盘那一个文件里用别名引入）。
+    -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- WFAC010：WinForms 分析器不喜欢 manifest 里的 PerMonitorV2；但这是 WPF 应用，manifest 里的 DPI 声明才是正确做法 -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.IO" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Net.Http" />
+    <Using Include="System.Threading" />
+    <Using Include="System.Threading.Tasks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Fluent 2 设计规范的 WPF 实现（Mica 背景 / NavigationView / Fluent 控件与图标） -->
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\YunsuoDownloader.Core\YunsuoDownloader.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="app.manifest">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- 托盘图标在运行时从 Resources\app.ico 读取（见 TrayIconService） -->
+    <None Update="Resources\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\app.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!--
+    浏览器插件：开发态也复制一份到输出目录（bin\Debug\net8.0-windows\extension\），
+    发布后就是 exe 同目录的 extension\。ExtensionPackager 会优先用它；
+    如果它被删掉/拷丢了，Core 里的内置副本会自动释放到 %AppData%。
+  -->
+  <ItemGroup>
+    <None Include="..\..\extension\**\*">
+      <Link>extension\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <!-- 显式声明，保证 dotnet publish / build.ps1 的发布目录里也有这一份 -->
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

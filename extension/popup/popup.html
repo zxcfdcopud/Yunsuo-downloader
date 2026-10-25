@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>视频嗅探下载器助手</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="../icons/icon32.png" alt="" class="brand-icon">
+      <div class="brand-text">
+        <strong>视频嗅探下载器助手</strong>
+        <span id="tabHost" class="muted">—</span>
+      </div>
+    </div>
+    <div id="connBadge" class="conn conn--idle" title="与桌面下载器的连接状态">
+      <span class="dot"></span><span id="connText">未连接</span>
+    </div>
+  </header>
+
+  <!-- 令牌不匹配提示 -->
+  <div id="tokenBanner" class="banner banner--error hidden">
+    <span>令牌不匹配，请在下载器 <b>设置 → 浏览器插件</b> 中复制令牌，粘贴到插件设置页。</span>
+    <div class="banner-actions">
+      <button id="btnOpenOptions" class="btn btn--tiny">打开设置</button>
+      <button id="btnRetryConnect" class="btn btn--tiny">重试连接</button>
+    </div>
+  </div>
+
+  <!-- 排队提示 -->
+  <div id="queueBanner" class="banner banner--warn hidden">
+    <span id="queueText">有任务排队等待发送</span>
+  </div>
+
+  <nav class="toolbar">
+    <button id="btnRescan" class="btn" title="重新扫描当前页面">刷新探测</button>
+    <button id="btnSendAll" class="btn btn--primary" title="发送列表中全部媒体">全部发送</button>
+    <button id="btnCopyAll" class="btn" title="复制全部直链">复制直链</button>
+    <button id="btnClear" class="btn btn--ghost" title="清空当前标签页列表">清空列表</button>
+    <button id="btnOptions" class="btn btn--ghost" title="打开插件设置">设置</button>
+  </nav>
+
+  <div class="meta-row">
+    <label class="chk">
+      <input type="checkbox" id="showFragments">
+      <span>显示 HLS 分片</span>
+    </label>
+    <span id="countText" class="muted">0 个媒体</span>
+  </div>
+
+  <main id="list" class="list">
+    <div id="emptyState" class="empty">
+      <p class="empty-title">尚未探测到可下载媒体</p>
+      <p class="empty-hint">请在本页播放视频，或点击「刷新探测」。<br>支持 HLS(m3u8) / DASH(mpd) / MP4 / WebM / FLV / MKV 等。</p>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div id="statusText" class="status">就绪</div>
+    <div class="footer-info">
+      <span id="appInfo" class="muted">下载器：未连接</span>
+      <a href="#" id="linkOptions" class="link">插件设置</a>
+    </div>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

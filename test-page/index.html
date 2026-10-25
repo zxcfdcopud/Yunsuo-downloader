@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta property="og:title" content="YunsuoDownloader 测试视频" />
+<meta property="og:image" content="https://placehold.co/640x360/teal/white?text=Cover" />
+<meta property="og:video:duration" content="240" />
+<meta property="og:video:type" content="video/mp4" />
+<title>下载器测试页 — YunsuoDownloader</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #283040; --fg: #e6e9ef;
+    --muted: #9aa3b2; --accent: #2f81f7; --ok: #3fb950; --warn: #d29922; --err: #f85149;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f5f7fa; --panel:#ffffff; --line:#d8dee9; --fg:#1b1f27; --muted:#5a6473; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.6 system-ui,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--fg); padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:15px; margin:20px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .sub { color:var(--muted); margin:0 0 16px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .card h3 { margin:0 0 6px; font-size:14px; }
+  .card p { margin:0 0 10px; color:var(--muted); font-size:12.5px; }
+  button { cursor:pointer; border:1px solid var(--line); background:var(--accent); color:#fff;
+    padding:8px 12px; border-radius:8px; font-size:13px; }
+  button.ghost { background:transparent; color:var(--fg); }
+  button:active { transform:translateY(1px); }
+  video { width:100%; border-radius:8px; background:#000; display:block; margin-top:6px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:8px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  input, select { background:var(--bg); color:var(--fg); border:1px solid var(--line);
+    border-radius:8px; padding:7px 9px; font-size:13px; }
+  label { color:var(--muted); font-size:12.5px; }
+  .status { font-weight:600; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .dot.off { background:var(--muted); } .dot.connect { background:var(--warn); }
+  .dot.on { background:var(--ok); } .dot.err { background:var(--err); }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px;
+    max-height:240px; overflow:auto; font-size:12px; white-space:pre-wrap; word-break:break-all; }
+  .logline { border-bottom:1px dashed var(--line); padding:4px 0; }
+  .logline .t { color:var(--muted); margin-right:8px; }
+  code { background:var(--bg); padding:1px 5px; border-radius:5px; font-size:12px; }
+  .pill { display:inline-block; font-size:11px; padding:2px 7px; border-radius:999px;
+    border:1px solid var(--line); color:var(--muted); margin-left:6px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<h1>下载器测试页 · YunsuoDownloader</h1>
+<p class="sub">本页用于快速验证浏览器扩展的「嗅探 → 发送」链路。每点一个按钮，对应媒体请求/视频元素就会出现，扩展的角标与弹窗应随之更新。下方面板可直接连接本机下载器的 WebSocket 并发送任务，省去打开插件弹窗。</p>
+
+<h2>1. 触发嗅探（让扩展检测到的媒体）</h2>
+<div class="grid">
+  <div class="card">
+    <h3>DOM &lt;video src&gt;（渐进式）</h3>
+    <p>直接插入一个带 <code>src</code> 的 &lt;video&gt;（mp4/webm），DOM 层即可扫到。</p>
+    <button id="btnDomMp4">插入 MP4</button>
+    <button class="ghost" id="btnDomWebm">插入 WebM</button>
+    <div id="domSlot"></div>
+  </div>
+
+  <div class="card">
+    <h3>data-src 播放器</h3>
+    <p>模拟「真实地址藏在 <code>data-src</code>」的站点，扩展会读取该属性。</p>
+    <button id="btnDataSrc">注入 data-src 视频</button>
+    <div id="dataSrcSlot"></div>
+  </div>
+
+  <div class="card">
+    <h3>&lt;source&gt; 标签</h3>
+    <p>插入含多个 <code>&lt;source&gt;</code> 的 &lt;video&gt;。</p>
+    <button id="btnSource">注入 source 列表</button>
+    <div id="sourceSlot"></div>
+  </div>
+
+  <div class="card">
+    <h3>fetch 抓 m3u8（MAIN world）</h3>
+    <p>触发扩展对 <code>fetch</code> 的 hook，就地解析 HLS 主列表，展开清晰度并标加密。</p>
+    <button id="btnFetchM3u8">fetch 主列表</button>
+    <div id="fetchSlot" class="pill">未请求</div>
+  </div>
+
+  <div class="card">
+    <h3>XHR 抓 m3u8（带请求头）</h3>
+    <p>触发 <code>XMLHttpRequest</code> hook，验证 Referer/UA/Cookie 等头被采集。</p>
+    <button id="btnXhrM3u8">XHR 主列表</button>
+    <div id="xhrSlot" class="pill">未请求</div>
+  </div>
+
+  <div class="card">
+    <h3>MSE / MediaSource 播放</h3>
+    <p>创建 <code>MediaSource</code> 喂 blob:，模拟 B 站/YouTube 的 MSE 链路（触发 MSE 提示）。</p>
+    <button id="btnMse">模拟 MSE 播放</button>
+    <div id="mseSlot" class="pill">未触发</div>
+  </div>
+
+  <div class="card">
+    <h3>直接媒体直链（webRequest）</h3>
+    <p>页面真正请求一个 .mp4 文件（扩展通过 webRequest 嗅到响应头）。</p>
+    <button id="btnDirect">请求直链 mp4</button>
+    <div id="directSlot" class="pill">未请求</div>
+  </div>
+
+  <div class="card">
+    <h3>清理</h3>
+    <p>移除本页注入的所有测试元素，便于重复测试。</p>
+    <button class="ghost" id="btnClear">清空测试元素</button>
+  </div>
+</div>
+
+<h2>2. 连接本机下载器并发送（绕过插件弹窗）</h2>
+<div class="panel">
+  <div class="row">
+    <label>地址</label>
+    <input id="wsUrl" value="ws://127.0.0.1:16888/media" style="width:260px" />
+    <label>令牌（与 App 设置一致；App 未设令牌则留空）</label>
+    <input id="wsToken" placeholder="可选" style="width:200px" />
+    <button id="btnConnect">连接并握手</button>
+    <button class="ghost" id="btnPing">Ping</button>
+  </div>
+  <div class="row">
+    <span class="status"><span id="wsDot" class="dot off"></span><span id="wsState">未连接</span></span>
+    <span id="wsExtra" class="pill"></span>
+  </div>
+  <div class="row">
+    <label>选择一条测试任务发送</label>
+    <select id="taskSel">
+      <option value="hls">HLS 主列表（多清晰度 + 含加密变体）</option>
+      <option value="hls-enc">HLS 仅加密变体</option>
+      <option value="mp4">MP4 渐进式</option>
+      <option value="webm">WebM</option>
+      <option value="mp3">MP3 音频</option>
+    </select>
+    <button id="btnSend">发送 add 任务</button>
+  </div>
+  <h2>日志</h2>
+  <pre id="wsLog"></pre>
+</div>
+
+<p class="sub" style="margin-top:18px">
+  说明：第 1 节用来观察<strong>扩展弹窗/角标</strong>是否正确地嗅探到媒体；第 2 节用来验证<strong>下载器 WebSocket 契约</strong>（hello / hello-ack / add / add-ack / 4001 令牌错误）。
+  若第 2 节一直「未连接」，请确认桌面下载器已启动且开启「设置 → 浏览器插件」服务，端口与上方一致。
+</p>
+
+<script>
+(function () {
+  'use strict';
+  const BASE = location.origin + '/media/';
+  const $ = (id) => document.getElementById(id);
+
+  function log(where, msg, level) {
+    const el = $(where);
+    const line = document.createElement('div');
+    line.className = 'logline';
+    const t = document.createElement('span');
+    t.className = 't';
+    t.textContent = new Date().toLocaleTimeString();
+    const c = document.createElement('span');
+    c.textContent = msg;
+    if (level === 'ok') c.style.color = 'var(--ok)';
+    if (level === 'err') c.style.color = 'var(--err)';
+    if (level === 'warn') c.style.color = 'var(--warn)';
+    line.appendChild(t); line.appendChild(c);
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ---------- 1. DOM / 网络嗅探触发 ----------
+  $('btnDomMp4').onclick = () => {
+    const v = document.createElement('video');
+    v.src = BASE + 'sample.mp4'; v.controls = true; v.muted = true;
+    $('domSlot').appendChild(v);
+    log('fetchSlot', '已插入 MP4 <video src>（DOM 层应捕获）', 'ok');
+  };
+  $('btnDomWebm').onclick = () => {
+    const v = document.createElement('video');
+    v.src = BASE + 'sample.webm'; v.controls = true; v.muted = true;
+    $('domSlot').appendChild(v);
+    log('fetchSlot', '已插入 WebM <video src>', 'ok');
+  };
+  $('btnDataSrc').onclick = () => {
+    const v = document.createElement('video');
+    v.setAttribute('data-src', BASE + 'hls_master.m3u8'); v.controls = true; v.muted = true;
+    v.poster = 'https://placehold.co/320x180/purple/white?text=Poster';
+    $('dataSrcSlot').appendChild(v);
+    log('fetchSlot', '已注入 data-src 视频（扩展读取 data-src 属性）', 'ok');
+  };
+  $('btnSource').onclick = () => {
+    const v = document.createElement('video');
+    v.controls = true; v.muted = true;
+    [['sample.mp4','video/mp4'], ['sample.webm','video/webm']].forEach(([u,m]) => {
+      const s = document.createElement('source'); s.src = BASE + u; s.type = m; v.appendChild(s);
+    });
+    $('sourceSlot').appendChild(v);
+    log('fetchSlot', '已注入 <source> 列表', 'ok');
+  };
+
+  // 这些 fetch/XHR 走真实网络，会被扩展的 MAIN world hook 捕获并就地解析
+  $('btnFetchM3u8').onclick = async () => {
+    try {
+      const r = await fetch(BASE + 'hls_master.m3u8', { headers: { 'X-Test': 'fetch-hook' } });
+      const t = await r.text();
+      $('fetchSlot').textContent = '已 fetch ' + r.status + ' 字节=' + t.length;
+      log('fetchSlot', 'fetch 主列表成功，扩展应解析出 3 清晰度（含 1 个加密变体）', 'ok');
+    } catch (e) { log('fetchSlot', 'fetch 失败: ' + e, 'err'); }
+  };
+  $('btnXhrM3u8').onclick = () => {
+    const x = new XMLHttpRequest();
+    x.open('GET', BASE + 'hls_master.m3u8');
+    x.setRequestHeader('Referer', location.href);
+    x.setRequestHeader('User-Agent', navigator.userAgent);
+    x.setRequestHeader('Cookie', 'test_session=abc123');
+    x.onloadend = () => {
+      $('xhrSlot').textContent = 'XHR 完成 ' + x.status;
+      log('xhrSlot', 'XHR 主列表完成，扩展应采集到 Referer/UA/Cookie 头', 'ok');
+    };
+    x.onerror = () => log('xhrSlot', 'XHR 出错', 'err');
+    x.send();
+  };
+
+  $('btnMse').onclick = () => {
+    if (typeof MediaSource === 'undefined') { log('mseSlot', '当前环境不支持 MediaSource', 'warn'); return; }
+    try {
+      const ms = new MediaSource();
+      const url = URL.createObjectURL(ms);
+      const v = document.createElement('video');
+      v.src = url; v.controls = true; v.muted = true;
+      ms.addEventListener('sourceopen', () => {
+        try { ms.addSourceBuffer('video/mp4; codecs="avc1.64001f"'); } catch (e) {}
+      });
+      $('mseSlot').textContent = '已创建 MSE（blob:）';
+      $('mseSlot').parentNode.insertBefore(v, $('mseSlot'));
+      log('mseSlot', '已触发 MediaSource，扩展会标记 MSE/blob: 播放', 'ok');
+    } catch (e) { log('mseSlot', 'MSE 触发失败: ' + e, 'err'); }
+  };
+
+  $('btnDirect').onclick = () => {
+    const img = new Image();
+    // 用 fetch 真正拉取一个 mp4，确保 webRequest 能嗅到响应头
+    fetch(BASE + 'sample.mp4').then(() => {
+      $('directSlot').textContent = '已请求直链 mp4';
+      log('directSlot', '直链 mp4 已请求，扩展 webRequest 层应嗅到 video/mp4', 'ok');
+    }).catch(e => log('directSlot', '直链请求失败: ' + e, 'err'));
+  };
+
+  $('btnClear').onclick = () => {
+    ['domSlot','dataSrcSlot','sourceSlot','mseSlot'].forEach(id => $(id).innerHTML = '');
+    $('fetchSlot').textContent = '未请求';
+    $('xhrSlot').textContent = '未请求';
+    $('directSlot').textContent = '未请求';
+    $('mseSlot').textContent = '未触发';
+    log('fetchSlot', '已清空测试元素', 'warn');
+  };
+
+  // ---------- 2. 本机下载器 WebSocket 面板 ----------
+  let ws = null;
+  let appVersion = '', downloadDir = '';
+
+  function setWs(state, extra) {
+    const dot = $('wsDot'), st = $('wsState');
+    dot.className = 'dot ' + (state === 'connected' ? 'on' : state === 'connecting' ? 'connect' : state === 'error' ? 'err' : 'off');
+    const map = { off:'未连接', connecting:'连接中…', connected:'已连接', error:'连接错误', token:'令牌错误(4001)' };
+    st.textContent = map[state] || state;
+    $('wsExtra').textContent = extra || '';
+  }
+
+  function buildTask(kind) {
+    const base = { url:'', kind:'', title:'测试-' + kind, filename:'test_' + kind,
+      referer: location.href, userAgent: navigator.userAgent, cookies:'',
+      headers:{ Referer: location.href, 'User-Agent': navigator.userAgent }, duration:240,
+      thumbnail:'https://placehold.co/640x360/teal/white?text=Cover', site:'other',
+      isHls:false, encrypted:false };
+    if (kind === 'hls') {
+      return Object.assign(base, { url: BASE + 'hls_master.m3u8', kind:'hls', isHls:true,
+        quality:'主列表(3清晰度/含加密)', site:'other' });
+    }
+    if (kind === 'hls-enc') {
+      return Object.assign(base, { url: BASE + 'hls_enc.m3u8', kind:'hls', isHls:true,
+        quality:'360P', encrypted:true, site:'other' });
+    }
+    if (kind === 'mp4') {
+      return Object.assign(base, { url: BASE + 'sample.mp4', kind:'video', quality:'', site:'other' });
+    }
+    if (kind === 'webm') {
+      return Object.assign(base, { url: BASE + 'sample.webm', kind:'video', quality:'', site:'other' });
+    }
+    if (kind === 'mp3') {
+      return Object.assign(base, { url: BASE + 'sample.mp3', kind:'file', quality:'', site:'other' });
+    }
+    return base;
+  }
+
+  $('btnConnect').onclick = () => {
+    if (ws) { try { ws.close(); } catch(e){} ws = null; }
+    const url = $('wsUrl').value.trim();
+    setWs('connecting');
+    log('wsLog', '正在连接 ' + url, 'warn');
+    try { ws = new WebSocket(url); } catch (e) { setWs('error'); log('wsLog','创建失败: '+e,'err'); return; }
+
+    ws.onopen = () => {
+      // 服务端先回 welcome，再发 hello（与扩展一致）
+      const hello = { type:'hello', client:'browser-extension', version:'1.0.0',
+        browser:'chrome', token: $('wsToken').value.trim() };
+      ws.send(JSON.stringify(hello));
+      log('wsLog', '已发送 hello：' + JSON.stringify(hello), 'ok');
+      setWs('connecting', '已发 hello');
+    };
+    ws.onmessage = (ev) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch(e){ log('wsLog','收到非 JSON: '+ev.data,'warn'); return; }
+      log('wsLog', '← ' + ev.data);
+      if (msg.type === 'welcome') { setWs('connecting', '收到 welcome'); }
+      else if (msg.type === 'hello-ack') {
+        appVersion = msg.appVersion || ''; downloadDir = msg.downloadDir || '';
+        setWs('connected', 'v' + appVersion + ' · ' + downloadDir);
+        log('wsLog', '握手成功：App v' + appVersion + '，下载目录 ' + downloadDir, 'ok');
+      }
+      else if (msg.type === 'add-ack') {
+        log('wsLog', '任务回执：accepted=' + msg.accepted + ' rejected=' + msg.rejected + ' (' + msg.message + ')',
+          msg.accepted > 0 ? 'ok' : 'warn');
+      }
+      else if (msg.type === 'pong') { log('wsLog', '收到 pong', 'ok'); }
+      else if (msg.type === 'notify') { log('wsLog', '通知[' + msg.level + '] ' + msg.message, 'ok'); }
+      else if (msg.type === 'config') { downloadDir = msg.downloadDir || downloadDir; setWs('connected','v'+appVersion+' · '+downloadDir); }
+      else if (msg.type === 'error') { log('wsLog', '错误：' + msg.message, 'err'); }
+    };
+    ws.onerror = () => { setWs('error'); log('wsLog', 'WebSocket 错误（详见控制台）', 'err'); };
+    ws.onclose = (e) => {
+      if (e.code === 4001) { setWs('token', '关闭码 4001'); log('wsLog', '连接被关闭：令牌错误（4001）', 'err'); }
+      else { setWs('off', 'code ' + e.code); log('wsLog', '连接关闭 code=' + e.code + ' reason=' + (e.reason||''), 'warn'); }
+    };
+  };
+
+  $('btnPing').onclick = () => {
+    if (!ws || ws.readyState !== 1) { log('wsLog', '未连接，无法 Ping', 'warn'); return; }
+    ws.send(JSON.stringify({ type:'ping' }));
+    log('wsLog', '→ ping');
+  };
+
+  $('btnSend').onclick = () => {
+    if (!ws || ws.readyState !== 1) { log('wsLog', '请先连接下载器', 'warn'); return; }
+    const t = buildTask($('taskSel').value);
+    const payload = { type:'add', tasks:[t] };
+    ws.send(JSON.stringify(payload));
+    log('wsLog', '→ add：' + t.kind + ' ' + t.url, 'ok');
+  };
+
+  log('wsLog', '测试页已加载。第 1 节用于观察扩展嗅探；第 2 节用于验证下载器 WebSocket 契约。');
+})();
+</script>
+</body>
+</html>

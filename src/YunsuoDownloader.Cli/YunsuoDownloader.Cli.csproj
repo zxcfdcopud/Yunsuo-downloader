@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>YunsuoDownloader.Cli</RootNamespace>
+    <AssemblyName>ysd</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\YunsuoDownloader.Core\YunsuoDownloader.Core.csproj" />
+  </ItemGroup>
+
+</Project>

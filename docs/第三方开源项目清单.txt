@@ -1,0 +1,182 @@
+﻿================================================================================
+            第三方开源项目清单（用了什么、借鉴了什么、项目地址）
+================================================================================
+项目名称：云梭下载器（Windows 多线程网盘视频下载器）
+文档版本：1.0
+生成日期：2026-10-17
+对应程序版本：1.0.0
+
+本文件回答三个问题：
+  A. 程序运行时真正调用/内置了哪些开源程序？它们的许可证是什么？项目地址在哪？
+  B. 界面与代码依赖了哪些开源库？
+  C. 哪些开源项目只是作为「实现思路 / 接口流程」的参考（没有复制其代码）？
+
+--------------------------------------------------------------------------------
+A. 运行时直接调用 / 内置的开源程序（重要：这些是独立可执行程序，由本程序以
+   子进程方式调用，代码没有链接进本项目）
+--------------------------------------------------------------------------------
+
+1) aria2  —— 多线程分片下载内核
+   项目地址：https://github.com/aria2/aria2
+   官方站点：https://aria2.github.io/
+   许可证　：GNU GPL v2 或更高版本（GPL-2.0-or-later）
+   用在哪　：本程序的默认下载引擎。以 `aria2c.exe --enable-rpc` 常驻进程启动，
+             通过 JSON-RPC（HTTP）派发任务、查询进度、控制暂停/继续。
+             它是「下载要快」的主力：单文件最多 16 个连接分片、支持断点续传。
+   版本　　：1.37.0（Windows 64 位构建）
+   获取方式：运行 scripts\fetch-tools.ps1 自动下载到 tools\aria2c.exe
+   备注　　：GPL 是「传染性」许可证。本程序通过**独立进程 + RPC**调用它，
+             不构成链接，因此本项目自身代码不受 GPL 约束；
+             但如果你要再分发本程序，必须同时提供 aria2 的许可证文本与源码获取方式。
+
+2) yt-dlp  —— 视频网站与 HLS/DASH 流解析内核
+   项目地址：https://github.com/yt-dlp/yt-dlp
+   许可证　：The Unlicense（公共领域）
+   用在哪　：哔哩哔哩 / YouTube / 抖音 / 快手 / 小红书 等 1800+ 站点的画质枚举与下载，
+             以及 m3u8(HLS) / mpd(DASH) 流的并发分片拉取（--concurrent-fragments，
+             这是 HLS 提速的关键参数）。
+   版本　　：2026.08.19
+   获取方式：运行 scripts\fetch-tools.ps1 自动下载到 tools\yt-dlp.exe
+
+3) youtube-dl  —— yt-dlp 的上游项目
+   项目地址：https://github.com/ytdl-org/youtube-dl
+   许可证　：The Unlicense
+   用在哪　：yt-dlp 直接沿用其 extractor 架构与命令行参数设计；本程序的参数拼装
+             （-f / -o / --print / --add-header 等）遵循这一套约定。
+
+4) FFmpeg / ffprobe  —— 音视频合并与转封装
+   项目地址：https://github.com/FFmpeg/FFmpeg
+   官方站点：https://ffmpeg.org/
+   许可证　：LGPL v2.1+（默认构建）；本程序使用的第三方 Windows 构建带 GPL 组件，
+             因此该构建整体按 GPL v3 分发，详见下方「构建来源」。
+   用在哪　：HLS 分片合并为 MP4、音视频流合流（--merge-output-format）、
+             转封装（--remux-video）、以及 ffprobe 读取时长做校验。
+   版本　　：N-127579（2026-10-16）
+   构建来源：https://github.com/BtbN/FFmpeg-Builds （ffmpeg-master-latest-win64-gpl）
+   获取方式：运行 scripts\fetch-tools.ps1 自动下载到 tools\ffmpeg.exe、tools\ffprobe.exe
+
+   ★ 许可证合规提示（再分发时必读）
+     · aria2 与上述 FFmpeg 构建都是 GPL 系许可证。把它们随程序一起打包分发时，
+       需要：① 保留各自的 LICENSE/COPYING 文件；② 在文档中声明使用了它们；
+       ③ 提供对应源码的获取地址（上面已给出）。tools\.cache\ 里下载得到的
+       原始压缩包内含完整许可证文本，正式发布前请把它一并放进安装包。
+     · 本程序自身的代码不修改、也不链接这些项目，只以子进程方式调用。
+
+--------------------------------------------------------------------------------
+B. 界面与代码依赖的开源库（通过 NuGet 引用，编译进程序集）
+--------------------------------------------------------------------------------
+
+5) WPF-UI (lepoco/wpfui)
+   项目地址：https://github.com/lepoco/wpfui
+   许可证　：MIT
+   用在哪　：Fluent 2 设计规范在 WPF 上的实现。本程序的窗口（FluentWindow）、
+             Mica 云母背景、圆角、系统标题栏一体化、信息栏（InfoBar）、
+             Fluent 按钮/输入框/数字框/进度环等控件，以及 Segoe Fluent Icons 图标
+             接入都来自它。是「要求 5：以 Fluent 为设计原则」的主要技术支撑。
+   版本　　：4.3.0
+
+6) CommunityToolkit.Mvvm
+   项目地址：https://github.com/CommunityToolkit/dotnet
+   许可证　：MIT
+   用在哪　：MVVM 的 ObservableObject 基类、[ObservableProperty] / [RelayCommand]
+             源生成器，以及设置页「改完即存」的双向绑定胶水代码。
+   版本　　：8.4.2
+
+7) .NET 8 / WPF（Microsoft）
+   项目地址：https://github.com/dotnet/runtime 、 https://github.com/dotnet/wpf
+   许可证　：MIT
+   用在哪　：整个桌面程序与命令行工具的运行时与 WPF 框架。
+   版本　　：SDK 8.0.426（开发时使用）
+
+--------------------------------------------------------------------------------
+C. 设计规范与视觉资源（非代码依赖）
+--------------------------------------------------------------------------------
+
+8) Microsoft Fluent 2 设计规范
+   地址：https://fluent2.microsoft.design/
+   用途：界面颜色层级（Card/Subtle/Accent 填充色）、圆角半径、间距节奏、
+         控件形态与状态反馈的唯一设计依据。
+
+9) Fluent System Icons（微软官方图标集）
+   项目地址：https://github.com/microsoft/fluentui-system-icons
+   许可证　：MIT
+   用途：界面中所有图标字形（Segoe Fluent Icons 字体码位）的来源。
+
+--------------------------------------------------------------------------------
+D. 实现思路 / 接口流程的参考项目（★ 未复制其源代码 ★）
+--------------------------------------------------------------------------------
+说明：以下项目是本程序在设计架构、以及摸清各家网盘/视频站网页接口调用流程时
+      参考的对象。本程序是用 C# 重新实现的，没有复制它们的源代码。列出是为了
+      尊重开源社区的劳动，也方便你在接口失效时去上游找最新算法。
+
+10) Motrix
+    项目地址：https://github.com/agalwood/Motrix
+    许可证　：MIT
+    参考点　：「本地拉起 aria2 进程 + RPC 调度 + 任务队列 + 完成通知」的整体架构。
+              本程序 DownloadManager / Aria2Engine 的分层方式是照这个思路用 C# 重写的。
+
+11) Gopeed
+    项目地址：https://github.com/GopeedLab/gopeed
+    许可证　：GPL-3.0
+    参考点　：多引擎统一抽象（内置引擎 / 外部下载器）与任务状态机的划分方式。
+
+12) N_m3u8DL-RE
+    项目地址：https://github.com/nilaoda/N_m3u8DL-RE
+    许可证　：MIT
+    参考点　：m3u8 分片并发拉取、加密流（#EXT-X-KEY）识别与分片合并的处理顺序。
+
+13) BaiduPCS-Go
+    项目地址：https://github.com/qjfoidnh/BaiduPCS-Go
+    许可证　：Apache-2.0
+    参考点　：百度网盘分享链接解析流程：分享页取 shareid/uk → /share/list 列目录
+              → /api/sharedownload 取 dlink（含 sign 签名串的拼装方式）。
+              对应本程序 Providers\Pan\CloudPanProviders.cs 里的 BaiduPanProvider。
+
+14) aliyunpan（tickstep/aliyunpan）
+    项目地址：https://github.com/tickstep/aliyunpan
+    许可证　：Apache-2.0
+    参考点　：阿里云盘匿名分享流程：get_share_token → file/list → 
+              get_share_link_download_url。对应 AliyunPanProvider。
+
+15) quark-auto-save
+    项目地址：https://github.com/Cp0204/quark-auto-save
+    许可证　：以该仓库声明为准
+    参考点　：夸克网盘分享流程：sharepage/token → sharepage/detail → 
+              sharepage/save 转存 → file/download 取直链。对应 QuarkPanProvider。
+
+16) cat-catch（抓猫）
+    项目地址：https://github.com/xifangczy/cat-catch
+    许可证　：GPL-3.0
+    参考点　：浏览器插件侧「webRequest 嗅探媒体请求 + 解析 m3u8 master/media 播放列表」
+              的思路。本程序的 extension\ 目录是独立的原生 JS 实现，未使用其代码。
+
+17) hls-downloader
+    项目地址：https://github.com/puemos/hls-downloader
+    许可证　：MIT
+    参考点　：插件里 HLS 播放列表解析与清晰度枚举的展示方式。
+
+18) 123 网盘 / 迅雷链接格式说明
+    迅雷链接（thunder://）的解码规则（Base64 后去掉首尾 AA/ZZ）是公开的通用格式，
+    未特指某一项目。
+
+--------------------------------------------------------------------------------
+E. 明确没有使用的项目（澄清）
+--------------------------------------------------------------------------------
+· 没有使用任何「付费/破解网盘加速」类工具，也没有绕过任何付费限制或 DRM。
+· 网盘解析全部走「用户本人登录态（Cookie）+ 网盘网页端公开接口」，不依赖任何
+  第三方白嫖解析接口。
+· 浏览器插件不使用任何第三方 JS 库（无 jQuery、无 m3u8-parser），全部原生实现。
+· 不包含任何遥测/上报代码。
+
+--------------------------------------------------------------------------------
+F. 许可证文本在哪
+--------------------------------------------------------------------------------
+· aria2 / FFmpeg 的完整许可证文本：tools\.cache\ 目录下下载得到的原始压缩包内
+  （aria2 的 COPYING、ffmpeg 的 LICENSE）。发布安装包时请一并附带。
+· NuGet 依赖的许可证：见各自项目仓库，均为 MIT，无额外义务。
+· 本程序自身的用户协议见 docs\EULA.txt。
+
+================================================================================
+如需替换/更新上述任何组件：把它们放到 tools\ 目录覆盖同名文件即可，
+程序每次启动都会重新探测版本；也可以在「设置 → 外部工具」里手动指定路径。
+================================================================================

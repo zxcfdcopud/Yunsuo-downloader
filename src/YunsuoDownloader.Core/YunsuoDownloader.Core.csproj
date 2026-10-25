@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>YunsuoDownloader.Core</RootNamespace>
+    <AssemblyName>YunsuoDownloader.Core</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!--
+    核心库刻意保持零第三方依赖：
+      * 下载引擎（aria2 RPC / 自研 HTTP 多连接 / yt-dlp）
+      * 可插拔网盘直链解析 Provider
+      * 本地 WebSocket 服务（自实现 RFC6455，避免 HttpListener 需要管理员 URL ACL）
+      * 设置 / 历史 / 检查更新
+      * 浏览器插件内置副本 + 路径探测（Services\ExtensionPackager.cs）
+  -->
+
+  <!--
+    浏览器插件的内置副本：把工程根目录 extension\**\* 编进 YunsuoDownloader.Core.dll。
+    这样把 exe 单独拷到别的机器、或用户把 extension\ 删掉时，插件也不会丢
+    （ExtensionPackager.EnsureAvailable() 会把内置副本释放到 %AppData%\YunsuoDownloader\extension）。
+    LogicalName 统一成 ext/ 前缀并保留相对目录结构（ext/icons/icon16.png ...）。
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\extension\**\*">
+      <LogicalName>ext/%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

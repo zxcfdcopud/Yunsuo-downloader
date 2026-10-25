@@ -1,0 +1,171 @@
+using YunsuoDownloader.Core.Models;
+using YunsuoDownloader.Core.Utils;
+
+namespace YunsuoDownloader.Core.Services;
+
+/// <summary>设置读写 + 变更通知 + 网盘凭据的 DPAPI 加解密。</summary>
+public sealed class SettingsService
+{
+    private readonly object _lock = new();
+
+    public AppSettings Current { get; private set; } = new();
+
+    public string FilePath => AppPaths.SettingsFile;
+
+    public event EventHandler<AppSettings>? Changed;
+
+    public void Load()
+    {
+        AppPaths.EnsureCreated();
+        var loaded = JsonUtil.ReadFile<AppSettings>(AppPaths.SettingsFile) ?? new AppSettings();
+        loaded.PanCredentials ??= new List<PanCredential>();
+        loaded.BrowserCookies ??= new List<BrowserCookie>();
+
+        // 网盘 Cookie：从 DPAPI 密文还原到内存
+        foreach (var c in loaded.PanCredentials)
+        {
+            if (string.IsNullOrEmpty(c.Cookie) && !string.IsNullOrEmpty(c.CookieProtected))
+                c.Cookie = SecretProtector.Unprotect(c.CookieProtected) ?? string.Empty;
+        }
+
+        // 站点 Cookie（插件采集的那份）同理
+        foreach (var c in loaded.BrowserCookies)
+        {
+            if (string.IsNullOrEmpty(c.Cookie) && !string.IsNullOrEmpty(c.CookieProtected))
+                c.Cookie = SecretProtector.Unprotect(c.CookieProtected) ?? string.Empty;
+        }
+
+        ApplyDefaults(loaded);
+        lock (_lock) Current = loaded;
+        Save();
+    }
+
+    private static void ApplyDefaults(AppSettings s)
+    {
+        if (string.IsNullOrWhiteSpace(s.MediaServerToken)) s.MediaServerToken = SecretProtector.NewToken();
+        if (s.MediaServerPort is < 1024 or > 65535) s.MediaServerPort = 16888;
+        if (string.IsNullOrWhiteSpace(s.MediaServerHost)) s.MediaServerHost = "127.0.0.1";
+        if (s.ConnectionsPerDownload is < 1 or > 64) s.ConnectionsPerDownload = 8;
+        if (s.AutoConnectionCap is < 1 or > 64) s.AutoConnectionCap = 16;
+        if (string.IsNullOrWhiteSpace(s.ConnectionMode)) s.ConnectionMode = "Auto";
+        if (s.ConnectionMode is not ("Auto" or "Fixed")) s.ConnectionMode = "Auto";
+        if (s.ConcurrentFragments is < 1 or > 64) s.ConcurrentFragments = 16;
+        if (s.MaxConcurrentDownloads is < 1 or > 32) s.MaxConcurrentDownloads = 3;
+        if (s.MinSplitSizeKb < 1024) s.MinSplitSizeKb = 1024;   // aria2 硬性要求 >= 1M
+        if (s.MinSplitSizeKb > 1024 * 1024) s.MinSplitSizeKb = 1024 * 1024;
+        if (s.MaxHistoryItems < 20) s.MaxHistoryItems = 500;
+        if (string.IsNullOrWhiteSpace(s.DownloadDirectory)) s.DownloadDirectory = AppSettings.DefaultDownloadDirectory;
+        if (string.IsNullOrWhiteSpace(s.Theme)) s.Theme = "System";
+    }
+
+    public void Save()
+    {
+        AppSettings snapshot;
+        lock (_lock)
+        {
+            snapshot = Current.Clone();
+            snapshot.PanCredentials = Current.PanCredentials
+                .Select(c => new PanCredential
+                {
+                    Provider = c.Provider,
+                    DisplayName = c.DisplayName,
+                    Enabled = c.Enabled,
+                    Remark = c.Remark,
+                    UpdatedAt = c.UpdatedAt,
+                    CookieProtected = string.IsNullOrEmpty(c.Cookie) ? c.CookieProtected : SecretProtector.Protect(c.Cookie)
+                }).ToList();
+
+            // 站点 Cookie 同样只写密文（明文只留在内存里）
+            snapshot.BrowserCookies = Current.BrowserCookies
+                .Select(c => new BrowserCookie
+                {
+                    Domain = c.Domain,
+                    UpdatedAt = c.UpdatedAt,
+                    CookieProtected = string.IsNullOrEmpty(c.Cookie) ? c.CookieProtected : SecretProtector.Protect(c.Cookie)
+                }).ToList();
+        }
+        JsonUtil.WriteFile(AppPaths.SettingsFile, snapshot);
+    }
+
+    /// <summary>修改设置并落盘 + 广播。</summary>
+    public void Update(Action<AppSettings> mutate)
+    {
+        lock (_lock) mutate(Current);
+        ApplyDefaults(Current);
+        Save();
+        Changed?.Invoke(this, Current);
+    }
+
+    public PanCredential? FindCredential(string provider) =>
+        Current.PanCredentials.FirstOrDefault(c =>
+            c.Enabled && string.Equals(c.Provider, provider, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// 取某个网盘的 Cookie。
+    /// 优先用用户在「设置 → 网盘账号」里手动填的；**没有就用插件自动采集的那份**
+    /// （<see cref="AppSettings.BrowserCookies"/>，按域名匹配）。
+    /// 这样用户只要在浏览器里登录过网盘，就不必再手动粘贴一次。
+    /// </summary>
+    public string? GetCookie(string provider)
+    {
+        var manual = FindCredential(provider)?.Cookie;
+        if (!string.IsNullOrWhiteSpace(manual)) return manual;
+
+        // 没有手填的：按 provider 对应的域名去插件采集的缓存里找
+        var domain = ProviderDomain(provider);
+        if (domain is null) return null;
+
+        lock (_lock)
+        {
+            var hit = Current.BrowserCookies.FirstOrDefault(c =>
+                c.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase) ||
+                c.Domain.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
+            if (hit is null) return null;
+            if (!string.IsNullOrEmpty(hit.Cookie)) return hit.Cookie;
+            if (string.IsNullOrEmpty(hit.CookieProtected)) return null;
+            var plain = SecretProtector.Unprotect(hit.CookieProtected);
+            if (!string.IsNullOrEmpty(plain)) hit.Cookie = plain;
+            return plain;
+        }
+    }
+
+    /// <summary>网盘 Provider → 该网站的主域名（用于匹配插件采集的 Cookie）。</summary>
+    public static string? ProviderDomain(string provider) => provider.ToLowerInvariant() switch
+    {
+        "baidu" => "pan.baidu.com",
+        "aliyun" => "www.alipan.com",
+        "quark" => "pan.quark.cn",
+        "pan123" => "www.123pan.com",
+        _ => null
+    };
+
+    public void SetCredential(string provider, string displayName, string cookie)
+    {
+        Update(s =>
+        {
+            var existing = s.PanCredentials.FirstOrDefault(c =>
+                string.Equals(c.Provider, provider, StringComparison.OrdinalIgnoreCase));
+            if (existing is null)
+            {
+                s.PanCredentials.Add(new PanCredential
+                {
+                    Provider = provider,
+                    DisplayName = displayName,
+                    Cookie = cookie,
+                    UpdatedAt = DateTime.Now
+                });
+            }
+            else
+            {
+                existing.Cookie = cookie;
+                existing.DisplayName = displayName;
+                existing.UpdatedAt = DateTime.Now;
+                existing.Enabled = true;
+            }
+        });
+    }
+
+    public void RemoveCredential(string provider) =>
+        Update(s => s.PanCredentials.RemoveAll(c =>
+            string.Equals(c.Provider, provider, StringComparison.OrdinalIgnoreCase)));
+}

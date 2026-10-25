@@ -1,0 +1,335 @@
+/*
+ * popup.css —— 弹窗样式。
+ * 深色为主，跟随系统 prefers-color-scheme 切换浅色；
+ * 全部为原生 CSS，无第三方依赖。
+ */
+
+:root {
+  --bg: #14161b;
+  --bg-elev: #1b1e26;
+  --bg-elev-2: #22262f;
+  --border: #2c313c;
+  --text: #e8eaf0;
+  --text-dim: #9aa2b1;
+  --accent: #3b82f6;
+  --accent-strong: #2563eb;
+  --success: #22c55e;
+  --warn: #f59e0b;
+  --error: #ef4444;
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f7f9;
+    --bg-elev: #ffffff;
+    --bg-elev-2: #eef1f5;
+    --border: #dde2e9;
+    --text: #1b1f27;
+    --text-dim: #5f6b7c;
+    --accent: #2563eb;
+    --accent-strong: #1d4ed8;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 400px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+.hidden { display: none !important; }
+.muted { color: var(--text-dim); }
+
+/* ---------- 头部 ---------- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand-icon { width: 22px; height: 22px; border-radius: 5px; }
+.brand-text { display: flex; flex-direction: column; min-width: 0; }
+.brand-text strong { font-size: 13px; font-weight: 600; }
+.brand-text span {
+  font-size: 11px;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.conn .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.conn--ok { color: var(--success); border-color: rgba(34, 197, 94, 0.4); }
+.conn--ok .dot { background: var(--success); }
+.conn--pending { color: var(--warn); border-color: rgba(245, 158, 11, 0.4); }
+.conn--pending .dot { background: var(--warn); }
+.conn--error { color: var(--error); border-color: rgba(239, 68, 68, 0.45); }
+.conn--error .dot { background: var(--error); }
+
+/* ---------- 提示条 ---------- */
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: var(--bg-elev-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.banner--error { color: #fecaca; background: rgba(239, 68, 68, 0.16); }
+.banner--warn { color: #fde68a; background: rgba(245, 158, 11, 0.14); }
+.banner-actions { display: flex; gap: 6px; }
+
+@media (prefers-color-scheme: light) {
+  .banner--error { color: #991b1b; }
+  .banner--warn { color: #92400e; }
+}
+
+/* ---------- 工具栏 ---------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+
+.btn:hover { border-color: var(--accent); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn--primary:hover { background: var(--accent-strong); }
+.btn--ghost { background: transparent; }
+.btn--tiny { padding: 3px 8px; font-size: 11px; }
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.chk { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.chk input { accent-color: var(--accent); }
+
+/* ---------- 列表 ---------- */
+
+.list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 4px 10px 10px;
+  min-height: 90px;
+}
+
+.empty { padding: 24px 14px; text-align: center; }
+.empty-title { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.empty-hint { margin: 0; font-size: 12px; color: var(--text-dim); line-height: 1.7; }
+
+.card {
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.card--frag { opacity: 0.75; padding: 6px 10px; }
+.card--hint { border-style: dashed; }
+
+.card-top { display: flex; align-items: flex-start; gap: 8px; }
+.card-top input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); }
+
+.card-main { flex: 1 1 auto; min-width: 0; }
+.card-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+
+.tag {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.tag--kind { color: #fff; background: var(--accent); border-color: var(--accent); }
+.tag--dash { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.tag--file { background: #475569; border-color: #475569; color: #fff; }
+.tag--site { color: var(--text); }
+.tag--warn { color: #fff; background: var(--warn); border-color: var(--warn); }
+.tag--ok { color: #fff; background: var(--success); border-color: var(--success); }
+/* 编码格式标签：HEVC 需要显眼一点，提醒用户可能播不了 */
+.tag--codec { color: var(--text); border-color: var(--accent); }
+.tag--codec-hevc { color: #fff; background: #b45309; border-color: #b45309; }
+.tag--audio { color: var(--text); border-color: #0891b2; }
+
+/* 卡片内的提示文案（HEVC 不支持提示 / 音轨独立提示） */
+.card-warn,
+.card-hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.card-warn {
+  color: #fde68a;
+  background: rgba(180, 83, 9, 0.18);
+  border: 1px solid rgba(180, 83, 9, 0.45);
+}
+
+.card-hint {
+  color: var(--text-dim);
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+}
+
+@media (prefers-color-scheme: light) {
+  .card-warn { color: #92400e; background: rgba(245, 158, 11, 0.12); border-color: rgba(180, 83, 9, 0.35); }
+}
+
+.url {
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  word-break: break-all;
+  margin: 0 0 6px;
+  max-height: 30px;
+  overflow: hidden;
+}
+
+.variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.variant {
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.section-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: 10px 2px 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-title::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ---------- 底部 ---------- */
+
+.app-footer {
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+.status { font-size: 12px; min-height: 18px; }
+.status--ok { color: var(--success); }
+.status--error { color: var(--error); }
+.status--warn { color: var(--warn); }
+
+.footer-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.footer-info .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 250px;
+}
+
+.link { color: var(--accent); text-decoration: none; }
+.link:hover { text-decoration: underline; }
+
+/* 滚动条 */
+.list::-webkit-scrollbar { width: 8px; }
+.list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
