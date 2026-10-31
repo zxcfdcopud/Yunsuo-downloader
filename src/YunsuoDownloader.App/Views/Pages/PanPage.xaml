@@ -160,9 +160,27 @@
                 </ListView.ItemTemplate>
             </ListView>
 
+            <!-- 解析失败：把原因放在正中间，别让用户去页脚找一行小字 -->
+            <Border VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="620"
+                    Padding="18,14" CornerRadius="8"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="#E81123" BorderThickness="1">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="16" Text="&#xE783;"
+                                   Foreground="#E81123" VerticalAlignment="Center" />
+                        <TextBlock Text="解析没有成功" FontWeight="SemiBold" Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap" Margin="0,10,0,0"
+                               TextAlignment="Center" LineHeight="20" />
+                </StackPanel>
+            </Border>
+
             <!-- 空状态 -->
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                        Visibility="{Binding HasResult, Converter={StaticResource InverseBoolToVisibility}}">
+                        Visibility="{Binding HasEmpty, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="40" Text="&#xE774;"
                            Opacity="0.3" HorizontalAlignment="Center" />
                 <TextBlock Text="还没有解析结果" FontSize="15" Margin="0,12,0,4" HorizontalAlignment="Center" />

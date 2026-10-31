@@ -84,6 +84,9 @@ public sealed partial class PanViewModel : ObservableObject
     [ObservableProperty] private string _selectedCountText = "未选择文件";
     [ObservableProperty] private bool _canGoUp;
     [ObservableProperty] private bool _canDownload;
+    [ObservableProperty] private bool _hasError;
+    [ObservableProperty] private string _errorText = string.Empty;
+    [ObservableProperty] private bool _hasEmpty = true;
 
     public ObservableCollection<PanLoginRow> Logins { get; } = new();
 
@@ -211,11 +214,18 @@ public sealed partial class PanViewModel : ObservableObject
             {
                 Files.Clear();
                 HasResult = false;
+                HasError = true;
+                HasEmpty = false;
+                ErrorText = result.Error ?? "解析失败。";
+                if (result.NeedPassword) ErrorText += "\n如果是提取码问题：把提取码填到上面的输入框，再点「解析分享」。";
                 SelectedCountText = "未选择文件";
-                StatusMessage = result.Error ?? "解析失败。";
-                if (result.NeedPassword) StatusMessage += "\n（如果是提取码问题，把提取码填到上面的输入框再点解析）";
+                CanDownload = false;
+                StatusMessage = "解析没有成功，原因见上面。";
                 return;
             }
+
+            HasError = false;
+            ErrorText = string.Empty;
 
             Files.Clear();
             foreach (var entry in result.Entries)
@@ -224,6 +234,7 @@ public sealed partial class PanViewModel : ObservableObject
             _share.Title = result.ShareTitle ?? _share.Title;
             ShareTitle = _share.Title ?? _share.ShareId;
             HasResult = Files.Count > 0;
+            HasEmpty = Files.Count == 0;
             DirPathText = _crumbs.Count == 0
                 ? "根目录"
                 : "根目录 / " + string.Join(" / ", _crumbs.Select(c => c.Name));
@@ -359,6 +370,9 @@ public sealed partial class PanViewModel : ObservableObject
         _crumbs.Clear();
         _share = null;
         HasResult = false;
+        HasError = false;
+        ErrorText = string.Empty;
+        HasEmpty = true;
         HasDiagnostics = false;
         DiagnosticsText = string.Empty;
         ShareTitle = string.Empty;
