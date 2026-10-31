@@ -76,7 +76,7 @@ public partial class App : Application
 
         _tray = new TrayIconService(_mainWindow);
 
-        // --page=<downloads|newtask|extension|settings|about>：启动后直接跳到指定页面（做快捷方式很好用）
+        // --page=<downloads|newtask|pan|extension|settings|about>：启动后直接跳到指定页面（做快捷方式很好用）
         var startPage = ExtractOption(args, "--page");
         if (!string.IsNullOrWhiteSpace(startPage)) _mainWindow.NavigateTo(startPage!);
 

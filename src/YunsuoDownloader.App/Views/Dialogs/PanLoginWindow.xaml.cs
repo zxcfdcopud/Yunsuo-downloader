@@ -118,8 +118,9 @@ public partial class PanLoginWindow : FluentWindow
 
             var important = cookies.Count(c =>
                 c.Name is "BDUSS" or "__puus" or "__pus" or "STOKEN" or "PANWEB" or "shareToken" or "b-user-id");
+            // 只记 Cookie 名字，不记值（值里有登录凭据）
             Log.Info($"[网盘登录] {_displayName}：取到 {cookies.Count} 个 Cookie（{header.Length} 字符，" +
-                     $"含关键登录态 {important} 个）");
+                     $"含关键登录态 {important} 个）：{string.Join(",", cookies.Select(c => c.Name))}");
 
             CookieHeader = header;
             Succeeded = true;
