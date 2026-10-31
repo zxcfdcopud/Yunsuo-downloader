@@ -3,15 +3,25 @@ using System.Text.RegularExpressions;
 namespace YunsuoDownloader.Core.Pan.Providers;
 
 /// <summary>
-/// 阿里云盘（aliyundrive.com / alipan.com）分享解析。
+/// 阿里云盘（alipan.com / aliyundrive.com）分享解析。
 ///
-/// 它是四家里最省事的一家：公开分享**不需要登录**，
-/// 流程就是 分享元信息 → share_token → 列目录 → get_share_link_download_url。
-/// 有访问密码的分享，把密码塞进 get_share_token 的 share_pwd 字段即可。
+/// 2026-10 实测到的真实链路（用 Chrome CDP 抓的网页请求）：
+///   1) POST {api}/adrive/v3/share_link/get_share_by_anonymous?share_id=…   分享信息（匿名）
+///   2) POST {api}/v2/share_link/get_share_token   {share_id, share_pwd}    拿 share_token
+///   3) POST {api}/adrive/v2/file/list_by_share    + x-share-token          列目录（新接口）
+///   4) 取直链：/v2/file/get_share_link_download_url 已经被官方下线
+///      —— 现在一律返回 <c>410 Gone</c>（空正文），说明阿里已经关掉匿名直链。
+///      阿里云盘现在要求「登录 → 转存到自己网盘 → 用 access token 取直链」，
+///      浏览器里的 access token 不是 Cookie，程序拿不到，所以 1.1 只做到"浏览 + 复制文件列表"。
+///
+/// 注意域名：网页版用的是 <c>api.aliyundrive.com</c>；
+/// <c>api.alipan.com</c> 上 /v2/share_link/get_share_token 会返回 "uri not exist"，
+/// 这是最容易踩的坑（一开始就踩了）。
 /// </summary>
 public sealed class AliyunPanProvider : IPanProvider
 {
-    private const string Api = "https://api.alipan.com";
+    private const string Api = "https://api.aliyundrive.com";
+    private const string ApiAlt = "https://api.alipan.com";
 
     private static readonly Regex Rx = new(
         @"https?://(?:www\.)?(?:aliyundrive|alipan)\.com/s/(?<id>[A-Za-z0-9_\-]+)",
@@ -24,7 +34,7 @@ public sealed class AliyunPanProvider : IPanProvider
     public string CookieDomain => "www.alipan.com";
     public bool RequiresLogin => false;
     public string RootId => "root";
-    public string Hint => "公开分享不需要登录；设了访问密码的分享需要填提取码。";
+    public string Hint => "可以匿名浏览分享里的文件；阿里已关闭匿名直链，下载需要先转存到自己网盘。";
 
     public bool CanHandle(string url) => !string.IsNullOrWhiteSpace(url) && Rx.IsMatch(url);
 
@@ -49,10 +59,11 @@ public sealed class AliyunPanProvider : IPanProvider
         var result = new PanListResult { ParentId = dirId };
         var headers = BaseHeaders(share);
 
-        // ---------- 1) 分享元信息（拿标题，顺便判断分享是否还存在）----------
+        // ---------- 1) 分享元信息（标题 / 是否有密码 / 是否还存在）----------
         if (string.IsNullOrWhiteSpace(share.Title))
         {
-            var info = await browser.PostJsonAsync($"{Api}/adrive/v3/share_link/get_share_by_anonymous",
+            var info = await browser.PostJsonAsync(
+                $"{Api}/adrive/v3/share_link/get_share_by_anonymous?share_id={Uri.EscapeDataString(share.ShareId)}",
                 new { share_id = share.ShareId }, headers, ct).ConfigureAwait(false);
 
             var code = info.Get("code");
@@ -63,8 +74,14 @@ public sealed class AliyunPanProvider : IPanProvider
                 return result;
             }
 
-            share.Title = info.Get("share_name") ?? info.Get("share_title");
-            browser.Diag($"分享标题：{share.Title ?? "（接口没返回）"}");
+            share.Title = info.Get("share_name") ?? info.Get("share_title") ?? info.Get("display_name");
+
+            if (PanJson.Bool(info.Root, "has_pwd") && string.IsNullOrEmpty(share.Password))
+            {
+                result.NeedPassword = true;
+                result.Error = "这个阿里云盘分享设置了访问密码，请输入后重试。";
+                return result;
+            }
         }
 
         // ---------- 2) share_token ----------
@@ -81,7 +98,6 @@ public sealed class AliyunPanProvider : IPanProvider
             share.Set("share_token", token);
         }
 
-        // ---------- 3) 列目录 ----------
         var listHeaders = new List<KeyValuePair<string, string>>(headers)
         {
             new("x-share-token", token)
@@ -98,21 +114,22 @@ public sealed class AliyunPanProvider : IPanProvider
             video_thumbnail_process = "video/snapshot,t_1000,f_jpg,ar_auto,w_300"
         };
 
-        var list = await browser.PostJsonAsync($"{Api}/adrive/v3/file/list", body, listHeaders, ct)
+        // 新接口 list_by_share（网页版在用）；老版本退回 /adrive/v3/file/list
+        var list = await browser.PostJsonAsync($"{Api}/adrive/v2/file/list_by_share", body, listHeaders, ct)
             .ConfigureAwait(false);
 
-        // v3 有时会被下掉，退回 v2（字段一致）
-        if (!list.IsSuccess || list.Get("items") is null)
+        if (list.Root is null || PanJson.At(list.Root, "items") is null)
         {
-            browser.Diag("v3/file/list 不可用，改试 v2/file/list");
-            list = await browser.PostJsonAsync($"{Api}/adrive/v2/file/list", body, listHeaders, ct)
+            browser.Diag("list_by_share 不可用，改试 /adrive/v3/file/list");
+            list = await browser.PostJsonAsync($"{Api}/adrive/v3/file/list", body, listHeaders, ct)
                 .ConfigureAwait(false);
         }
 
         var listCode = list.Get("code");
         if (!string.IsNullOrWhiteSpace(listCode))
         {
-            if (IsTokenExpired(listCode))
+            if (listCode.Contains("TokenExpired", StringComparison.OrdinalIgnoreCase) ||
+                listCode.Contains("ShareLinkToken", StringComparison.OrdinalIgnoreCase))
             {
                 share.Set("share_token", null);
                 result.Error = "阿里云盘的分享令牌过期了，请点「重新解析」再试一次。";
@@ -166,7 +183,7 @@ public sealed class AliyunPanProvider : IPanProvider
             new("x-share-token", token)
         };
 
-        var resp = await browser.PostJsonAsync($"{Api}/adrive/v2/file/get_share_link_download_url", new
+        var resp = await browser.PostJsonAsync($"{Api}/v2/file/get_share_link_download_url", new
         {
             share_id = share.ShareId,
             file_id = entry.Id,
@@ -174,51 +191,58 @@ public sealed class AliyunPanProvider : IPanProvider
         }, headers, ct).ConfigureAwait(false);
 
         var url = resp.Get("url");
-        if (string.IsNullOrWhiteSpace(url))
+        if (!string.IsNullOrWhiteSpace(url))
         {
-            // 有的版本这个接口挂在 v3 上
-            resp = await browser.PostJsonAsync($"{Api}/adrive/v3/file/get_share_link_download_url", new
+            return new PanDownloadLink
             {
-                share_id = share.ShareId,
-                file_id = entry.Id,
-                expire_sec = 14400
-            }, headers, ct).ConfigureAwait(false);
-            url = resp.Get("url");
+                Ok = true,
+                Url = url,
+                FileName = entry.Name,
+                Size = entry.Size,
+                Cookies = browser.CookieHeader.Length > 0 ? browser.CookieHeader : null,
+                Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Referer"] = "https://www.alipan.com/",
+                    ["User-Agent"] = PanBrowser.DesktopUserAgent
+                },
+                Message = $"阿里云盘直链已获取：{entry.Name}"
+            };
         }
 
-        if (string.IsNullOrWhiteSpace(url))
+        // 410 / 404 = 官方下线了匿名直链接口（2026-10 实测就是 410 Gone，正文为空）
+        if (resp.Status is 410 or 404)
         {
-            var code = resp.Get("code") ?? resp.Get("message") ?? resp.Snippet;
             return PanDownloadLink.Fail(
-                $"阿里云盘没有返回下载地址（{code}）。\n" +
-                "常见原因：分享方关闭了「允许下载」、文件被和谐，或接口已改版。");
+                "阿里云盘已经关闭「匿名分享直链」接口（服务端返回 410 Gone）。\n" +
+                "现在必须：登录阿里云盘 → 把这个文件转存到自己网盘 → 再从自己网盘下载。\n\n" +
+                "可以这样做：\n" +
+                "1) 在浏览器里打开这个分享，点「保存到我的网盘」；\n" +
+                "2) 打开本程序的「浏览器插件」页，在阿里云盘网页上点插件的下载按钮，让它直接嗅探下载地址；\n" +
+                "3) 或者先把文件转存，再用自己的账号在网页上下载。");
         }
 
-        return new PanDownloadLink
-        {
-            Ok = true,
-            Url = url,
-            FileName = entry.Name,
-            Size = entry.Size,
-            Cookies = browser.CookieHeader.Length > 0 ? browser.CookieHeader : null,
-            Headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["Referer"] = "https://www.alipan.com/",
-                ["User-Agent"] = PanBrowser.DesktopUserAgent
-            },
-            Message = $"阿里云盘直链已获取：{entry.Name}"
-        };
+        var code = resp.Get("code") ?? resp.Get("message") ?? resp.Snippet;
+        return PanDownloadLink.Fail(
+            $"阿里云盘没有返回下载地址（{code}）。\n" +
+            "常见原因：分享方关闭了「允许下载」、文件被和谐，或接口已改版。");
     }
 
     // ------------------------------------------------------------------ 内部
     private async Task<string?> FetchTokenAsync(PanShare share, PanBrowser browser,
         List<KeyValuePair<string, string>> headers, PanListResult result, CancellationToken ct)
     {
-        var resp = await browser.PostJsonAsync($"{Api}/adrive/v2/share_link/get_share_token", new
+        var body = new { share_id = share.ShareId, share_pwd = share.Password ?? string.Empty };
+
+        var resp = await browser.PostJsonAsync($"{Api}/v2/share_link/get_share_token", body, headers, ct)
+            .ConfigureAwait(false);
+
+        // api.aliyundrive.com 上没有这个接口时（个别地区/版本），退到 api.alipan.com
+        if (resp.Status == 404 || (resp.Body.Contains("not exist", StringComparison.OrdinalIgnoreCase)))
         {
-            share_id = share.ShareId,
-            share_pwd = share.Password ?? string.Empty
-        }, headers, ct).ConfigureAwait(false);
+            browser.Diag("api.aliyundrive.com 没有 get_share_token，改试 api.alipan.com");
+            resp = await browser.PostJsonAsync($"{ApiAlt}/v2/share_link/get_share_token", body, headers, ct)
+                .ConfigureAwait(false);
+        }
 
         var token = resp.Get("share_token");
         if (!string.IsNullOrWhiteSpace(token)) return token;
@@ -235,7 +259,7 @@ public sealed class AliyunPanProvider : IPanProvider
 
         var code = resp.Get("code") ?? "?";
         var message = resp.Get("message");
-        result.Error = string.Equals(code, "NotFound.ShareLink", StringComparison.OrdinalIgnoreCase)
+        result.Error = code == "NotFound.ShareLink"
             ? "这个阿里云盘分享不存在或已失效。"
             : $"阿里云盘获取分享令牌失败（{code}）：{message}\n{resp.Snippet}";
         return null;
@@ -245,14 +269,9 @@ public sealed class AliyunPanProvider : IPanProvider
     {
         new("Referer", $"https://www.alipan.com/s/{share.ShareId}"),
         new("Origin", "https://www.alipan.com"),
-        // 网页版带这个头才会走分享页专用接口分支
+        // 网页版带这个头才会走"分享页"分支
         new("x-canary", "client=web,app=share,version=v2.3.2")
     };
-
-    private static bool IsTokenExpired(string? code) =>
-        !string.IsNullOrEmpty(code) &&
-        (code.Contains("TokenExpired", StringComparison.OrdinalIgnoreCase) ||
-         code.Contains("ShareLinkToken", StringComparison.OrdinalIgnoreCase));
 
     private static bool IsPasswordProblem(PanResponse resp)
     {

@@ -303,6 +303,8 @@ internal static class Program
         {
             var e = list.Entries[i];
             Console.WriteLine($"{i + 1,3}. {(e.IsFolder ? "[文件夹]" : "[文件]  "),-10} {e.SizeText,10}  {e.ModifiedText,-16}  {e.Name}");
+            // 打印 ID 是给 `--dir <目录ID>` 用的：进了子目录还得能自己往下走
+            Console.WriteLine($"      id = {e.Id}");
         }
 
         if (links)

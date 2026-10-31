@@ -169,7 +169,16 @@ public sealed class QuarkPanProvider : IPanProvider
 
         var taskId = save.Get("data", "task_id");
         if (string.IsNullOrWhiteSpace(taskId))
+        {
+            // 2026-10 实测：未登录时夸克对"转存"直接回 401 code=31001「require login [guest]」
+            if (save.Status == 401 || save.GetLong("code") == 31001)
+            {
+                return PanDownloadLink.Fail(
+                    "夸克网盘要求先登录才能取直链（转存到自己网盘再下载）。\n" +
+                    "请到「网盘解析」页点夸克那一行的「登录」，登录后再试一次。");
+            }
             return PanDownloadLink.Fail("夸克转存失败：" + (save.Get("message") ?? save.Snippet));
+        }
 
         string? savedFid = null;
         for (var i = 0; i < 30 && savedFid is null; i++)
@@ -203,7 +212,12 @@ public sealed class QuarkPanProvider : IPanProvider
         }, headers, ct).ConfigureAwait(false);
 
         var stoken = resp.Get("data", "stoken");
-        if (!string.IsNullOrWhiteSpace(stoken)) return stoken;
+        if (!string.IsNullOrWhiteSpace(stoken))
+        {
+            // stoken 接口顺带返回分享标题，别浪费一次请求
+            share.Title ??= resp.Get("data", "title");
+            return stoken;
+        }
 
         if (IsPasswordProblem(resp))
         {

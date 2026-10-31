@@ -176,6 +176,15 @@ public sealed class Pan123Provider : IPanProvider
         {
             var code = resp?.GetLong("code") ?? -1;
             var message = resp?.Get("message") ?? resp?.Snippet ?? "无响应";
+
+            // 2026-10 实测：未登录时 123 对取直链回 code=20101「未登录」
+            if (code is 20101 or 20102 or 401)
+            {
+                return PanDownloadLink.Fail(
+                    $"123 云盘要求先登录才能取直链（接口返回 code={code}「{message}」）。\n" +
+                    "请到「网盘解析」页点 123 云盘那一行的「登录」，登录后再试一次。");
+            }
+
             return PanDownloadLink.Fail(
                 $"123 云盘取直链失败（code={code}）：{message}\n" +
                 "常见原因：分享方关闭了下载、文件需要登录、或接口改版。");
