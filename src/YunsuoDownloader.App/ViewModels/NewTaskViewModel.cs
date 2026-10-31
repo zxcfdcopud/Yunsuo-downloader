@@ -342,6 +342,11 @@ public sealed partial class NewTaskViewModel : ObservableObject
             StatusMessage = "请先选择下载保存位置。";
             return;
         }
+        if (!PathGuard.IsUsableDirectory(Directory))
+        {
+            StatusMessage = $"保存位置不是有效的文件夹路径：{Directory}\n点「浏览…」重新选一个目录（别把链接填进来）。";
+            return;
+        }
 
         IsBusy = true;
         int ok = 0, fail = 0;

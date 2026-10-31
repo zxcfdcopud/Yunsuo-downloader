@@ -1,4 +1,4 @@
-<UserControl x:Class="YunsuoDownloader.App.Views.Pages.PanPage"
+﻿<UserControl x:Class="YunsuoDownloader.App.Views.Pages.PanPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
@@ -19,10 +19,30 @@
         </Grid.RowDefinitions>
 
         <!-- ==================== 标题 ==================== -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
             <TextBlock Text="网盘解析" Style="{StaticResource PageTitleStyle}" />
             <TextBlock Style="{StaticResource CaptionTextStyle}"
                        Text="支持百度网盘 / 夸克网盘 / 123 云盘。粘分享链接（提取码会一起识别），进文件夹挑文件，勾选后批量下载。" />
+
+            <!--
+               用前须知：说清"不加速 / 要空间 / 还在开发中"，省得用户以为是程序坏了。
+               做成可折叠的：窗口矮的时候（700）展开会把下面的文件列表挤没，
+               折起来只剩一行标题，用户想看再展开。
+            -->
+            <Expander Margin="0,6,0,0" IsExpanded="False"
+                      Header="使用前请了解（只做直链解析 · 需要网盘剩余空间 · 功能开发中）">
+                <Border Padding="12,10" CornerRadius="6"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.9" LineHeight="19">
+                        <Run Text="· 这里只做「直链解析」，不提供任何下载加速：速度取决于你的网盘账号（普通 / 会员）和网络。" />
+                        <LineBreak />
+                        <Run Text="· 夸克 / 百度 取直链前需要先把文件「转存到自己的网盘」，请确认账号剩余空间足够，否则会提示容量不足。" />
+                        <LineBreak />
+                        <Run Text="· 功能仍在开发中，可能存在问题；后续版本会支持更多网盘。" />
+                    </TextBlock>
+                </Border>
+            </Expander>
         </StackPanel>
 
         <!-- ==================== 输入 ==================== -->
@@ -66,12 +86,15 @@
                                     <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="13"
                                                VerticalAlignment="Center" Margin="0,0,7,0"
                                                Text="&#xE77B;" />
-                                    <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
                                         <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12" />
-                                        <TextBlock Text="{Binding StateText}" FontSize="11" Opacity="0.7" />
+                                        <TextBlock Text=" · " FontSize="11" Opacity="0.5" />
+                                        <TextBlock Text="{Binding StateText}" FontSize="11" Opacity="0.7"
+                                                   VerticalAlignment="Center" />
                                     </StackPanel>
                                     <ui:Button Appearance="Secondary" Padding="10,3" FontSize="12"
                                                Content="{Binding ActionText}"
+                                               Visibility="{Binding CanLogin, Converter={StaticResource BoolToVisibility}}"
                                                Command="{Binding DataContext.ToggleLoginCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                CommandParameter="{Binding}" />
                                 </StackPanel>
@@ -131,14 +154,15 @@
         </Grid>
 
         <!-- ==================== 文件列表 ==================== -->
+        <!-- MinHeight：窗口矮的时候宁可让整页留白/滚动，也不要把列表挤成一条缝看不到东西 -->
         <Grid Grid.Row="4">
-            <ListView ItemsSource="{Binding Files}" Style="{StaticResource FlatListViewStyle}">
+            <ListView ItemsSource="{Binding Files}" Style="{StaticResource FlatListViewStyle}" MinHeight="120">
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <Border Style="{StaticResource CardBorderStyle}" Padding="10,8">
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="12,8">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="38" />
                                     <ColumnDefinition Width="28" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="96" />
@@ -146,7 +170,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <CheckBox Grid.Column="0" VerticalAlignment="Center"
+                                <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="4,0,0,0"
                                           IsChecked="{Binding IsSelected}"
                                           Visibility="{Binding IsFolder, Converter={StaticResource InverseBoolToVisibility}}" />
 

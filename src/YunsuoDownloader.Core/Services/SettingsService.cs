@@ -80,7 +80,8 @@ public sealed class SettingsService
         if (s.MinSplitSizeKb < 1024) s.MinSplitSizeKb = 1024;   // aria2 硬性要求 >= 1M
         if (s.MinSplitSizeKb > 1024 * 1024) s.MinSplitSizeKb = 1024 * 1024;
         if (s.MaxHistoryItems < 20) s.MaxHistoryItems = 500;
-        if (string.IsNullOrWhiteSpace(s.DownloadDirectory)) s.DownloadDirectory = AppSettings.DefaultDownloadDirectory;
+        // 目录被写成链接/相对路径（历史 bug、手改配置文件）时自愈回默认目录
+        if (!PathGuard.IsUsableDirectory(s.DownloadDirectory)) s.DownloadDirectory = AppSettings.DefaultDownloadDirectory;
         if (string.IsNullOrWhiteSpace(s.Theme)) s.Theme = "System";
     }
 

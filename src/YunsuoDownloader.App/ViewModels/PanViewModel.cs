@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -47,6 +47,9 @@ public sealed partial class PanLoginRow : ObservableObject
 
     public bool RequiresLogin { get; }
 
+    /// <summary>只有"必须登录才能下"的网盘才显示登录按钮；123 这种公开分享直接能下的没必要登。</summary>
+    public bool CanLogin => RequiresLogin;
+
     [ObservableProperty] private bool _isLoggedIn;
 
     [ObservableProperty] private string _stateText = "未登录";
@@ -58,7 +61,10 @@ public sealed partial class PanLoginRow : ObservableObject
         Hint = provider.Hint;
         RequiresLogin = provider.RequiresLogin;
         _isLoggedIn = loggedIn;
-        _stateText = loggedIn ? "已登录（Cookie 有效期内）" : (provider.RequiresLogin ? "未登录 — 需要登录才能下载" : "未登录（公开分享也能解析）");
+        _stateText = !provider.RequiresLogin
+            // 不需要登录的网盘（123）：就算设置里残留了一份访客 Cookie，也不要显示"已登录"误导人
+            ? "无需登录"
+            : (loggedIn ? "已登录" : "未登录 · 需登录才能下");
     }
 
     public string ActionText => IsLoggedIn ? "退出" : "登录";
@@ -108,7 +114,7 @@ public sealed partial class PanViewModel : ObservableObject
 
         Logins.Clear();
         foreach (var provider in PanCatalog.Providers)
-            Logins.Add(new PanLoginRow(provider, Service.HasLogin(provider.Id)));
+            Logins.Add(new PanLoginRow(provider, provider.RequiresLogin && Service.HasLogin(provider.Id)));
     }
 
     /// <summary>一行的「登录 / 退出」按钮：已登录就退出，没登录就弹内嵌浏览器登录。</summary>

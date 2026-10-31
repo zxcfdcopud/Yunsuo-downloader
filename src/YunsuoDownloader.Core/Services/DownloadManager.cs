@@ -425,7 +425,22 @@ public sealed class DownloadManager : IAsyncDisposable
             if (!string.IsNullOrWhiteSpace(ext)) item.FileName += ext;
         }
 
+        // 保存目录兜底：这里必须挡住"看起来像链接/不是绝对路径"的目录。
+        // 实测踩过：目录被填成了分享链接（https://www.123684.com/s/…），
+        // aria2 于是去 mkdir 一个叫 "https://…" 的文件夹，报
+        // "Failed to make the directory …, cause: Invalid argument"，
+        // 用户只能看到一个"无法创建目录"的失败任务，完全猜不到是目录填错了。
         item.Directory = !string.IsNullOrWhiteSpace(req.Directory) ? req.Directory! : settings.DownloadDirectory;
+        if (!PathGuard.IsUsableDirectory(item.Directory))
+        {
+            // 优先退回"设置里的下载目录"（通常是好的），实在不行才退系统默认
+            var fallback = PathGuard.IsUsableDirectory(settings.DownloadDirectory)
+                ? settings.DownloadDirectory
+                : Models.AppSettings.DefaultDownloadDirectory;
+            Log.Warn($"保存目录不可用（{item.Directory}），已改用：{fallback}");
+            item.Directory = fallback;
+        }
+
         if (settings.CreateSubfolderPerTask && !string.IsNullOrWhiteSpace(item.Title) && item.Kind is DownloadKind.Video or DownloadKind.Hls)
         {
             try { item.Directory = Path.Combine(item.Directory, Format.SafeFileName(item.Title, "video")); }

@@ -583,6 +583,15 @@ public static class SelfTest
             Core.Engine.YtDlpEngine.BuildFormatSelector("best") == "bv*+ba/b" &&
             Core.Engine.YtDlpEngine.BuildFormatSelector(null) == "bv*+ba/b");
 
+        // ---- 保存目录校验（挡住"把链接填进目录框"）----
+        Check("目录校验：链接不能当保存目录",
+            !Core.Utils.PathGuard.IsUsableDirectory("https://www.123684.com/s/6zVRVv-BHwmd"));
+        Check("目录校验：磁力链不能当保存目录",
+            !Core.Utils.PathGuard.IsUsableDirectory("magnet:?xt=urn:btih:abc"));
+        Check("目录校验：绝对路径可用", Core.Utils.PathGuard.IsUsableDirectory(@"F:\测试"));
+        Check("目录校验：相对路径不认", !Core.Utils.PathGuard.IsUsableDirectory("downloads"));
+        Check("目录校验：空值不认", !Core.Utils.PathGuard.IsUsableDirectory(""));
+
         // 非网盘链接不受影响（保证没误伤）
         var biliResolve = manager.ResolveAsync("https://www.bilibili.com/video/BV1xx411c7mD")
             .GetAwaiter().GetResult();

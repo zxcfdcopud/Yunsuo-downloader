@@ -122,11 +122,18 @@ public partial class App : Application
         // ---- 命令行带入的链接
         if (args.Length > 0) _ = HandleArgumentsAsync(args);
 
-        // ---- 检查更新（需求 10）
-        if (AppServices.Settings.Current.CheckUpdatesOnStartup)
+        // ---- 检查更新（需求 10）：每天第一次启动检查一次，同一天再开就不打扰 ----
+        var updateSettings = AppServices.Settings.Current;
+        var checkedToday = updateSettings.LastUpdateCheck?.Date == DateTime.Today;
+        if (updateSettings.CheckUpdatesOnStartup && !checkedToday)
+        {
+            Log.Info($"今天还没检查过更新（上次：{updateSettings.LastUpdateCheck?.ToString("yyyy-MM-dd HH:mm") ?? "从未"}），开始检查");
             _ = CheckUpdatesSilentlyAsync();
-        else
-            Notify("提示", "提示：可在「设置 → 更新」中开启启动时自动检查更新", Models.InfoSeverity.Info);
+        }
+        else if (!updateSettings.CheckUpdatesOnStartup)
+        {
+            Notify("提示", "提示：可在「设置 → 更新」中开启每天自动检查更新", Models.InfoSeverity.Info);
+        }
 
         Log.Info($"启动完成，工具状态：{Environment.NewLine}{AppServices.Tools.Summary()}");
     }
