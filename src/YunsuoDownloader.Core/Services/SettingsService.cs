@@ -134,15 +134,16 @@ public sealed class SettingsService
         var manual = FindCredential(provider)?.Cookie;
         if (!string.IsNullOrWhiteSpace(manual)) return manual;
 
-        // 没有手填的：按 provider 对应的域名去插件采集的缓存里找
-        var domain = ProviderDomain(provider);
-        if (domain is null) return null;
+        // 没有手填的：按 provider 对应的域名去插件采集的缓存里找。
+        // 一个网盘往往有多个域名（阿里 alipan / aliyundrive，123 有一堆镜像），
+        // 所以这里按"域名列表 + 子域后缀"匹配，否则用户在 123684.com 上登录过，
+        // 程序认的是 123pan.com，就永远匹配不上。
+        var domains = ProviderDomains(provider);
+        if (domains.Length == 0) return null;
 
         lock (_lock)
         {
-            var hit = Current.BrowserCookies.FirstOrDefault(c =>
-                c.Domain.Equals(domain, StringComparison.OrdinalIgnoreCase) ||
-                c.Domain.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
+            var hit = Current.BrowserCookies.FirstOrDefault(c => domains.Any(d => MatchesDomain(c.Domain, d)));
             if (hit is null) return null;
             if (!string.IsNullOrEmpty(hit.Cookie)) return hit.Cookie;
             if (string.IsNullOrEmpty(hit.CookieProtected)) return null;
@@ -152,15 +153,38 @@ public sealed class SettingsService
         }
     }
 
-    /// <summary>网盘 Provider → 该网站的主域名（用于匹配插件采集的 Cookie）。</summary>
-    public static string? ProviderDomain(string provider) => provider.ToLowerInvariant() switch
+    /// <summary>Cookie 的域名是否属于 <paramref name="domain"/>（含子域名，双向兼容）。</summary>
+    public static bool MatchesDomain(string? cookieDomain, string domain)
     {
-        "baidu" => "pan.baidu.com",
-        "aliyun" => "www.alipan.com",
-        "quark" => "pan.quark.cn",
-        "pan123" => "www.123pan.com",
-        _ => null
+        if (string.IsNullOrWhiteSpace(cookieDomain)) return false;
+        return cookieDomain.Equals(domain, StringComparison.OrdinalIgnoreCase)
+               || cookieDomain.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase)
+               || domain.EndsWith("." + cookieDomain, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// 网盘 Provider → 可能落到哪些域名上（插件采集是按域名存的）。
+    /// 第一个是主域名，其余是镜像/旧域名。
+    /// </summary>
+    public static string[] ProviderDomains(string provider) => provider.ToLowerInvariant() switch
+    {
+        "baidu" => new[] { "pan.baidu.com", "baidu.com" },
+        "aliyun" => new[] { "www.alipan.com", "www.aliyundrive.com", "alipan.com", "aliyundrive.com" },
+        "quark" => new[] { "pan.quark.cn", "quark.cn" },
+        "pan123" => new[]
+        {
+            "www.123pan.com", "www.123684.com", "www.123865.com", "www.123912.com", "www.123592.com",
+            "123pan.com", "123684.com", "123865.com"
+        },
+        _ => Array.Empty<string>()
     };
+
+    /// <summary>兼容旧调用：取第一个主域名。</summary>
+    public static string? ProviderDomain(string provider)
+    {
+        var list = ProviderDomains(provider);
+        return list.Length > 0 ? list[0] : null;
+    }
 
     public void SetCredential(string provider, string displayName, string cookie)
     {

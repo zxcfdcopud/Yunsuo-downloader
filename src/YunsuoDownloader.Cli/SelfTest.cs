@@ -527,6 +527,25 @@ public static class SelfTest
         Check("123 直链：params 是乱码时不崩",
             Core.Pan.PanUrl.TryDecodeRedirectParams("https://x/download-v2/?params=%%%") is null);
 
+        // ---- 网盘登录态（插件自动采集通道）----
+        Check("Cookie 域名匹配：子域名算同一站",
+            Core.Services.SettingsService.MatchesDomain("sub.pan.quark.cn", "pan.quark.cn"));
+        Check("Cookie 域名匹配：相似域名不算",
+            !Core.Services.SettingsService.MatchesDomain("evilpan.quark.cn", "pan.quark.cn"));
+        Check("网盘域名表：123 的镜像域名都列了",
+            Core.Services.SettingsService.ProviderDomains("Pan123").Contains("www.123684.com"));
+
+        settings.Update(s => s.BrowserCookies.Add(new Core.Models.BrowserCookie
+        {
+            Domain = "123684.com",
+            Cookie = "__pus=FROM_EXTENSION"
+        }));
+        var viaExtension = settings.GetCookie("Pan123");
+        Check("登录态：插件采集的 Cookie 能被网盘解析认出来（镜像域名）",
+            viaExtension == "__pus=FROM_EXTENSION", viaExtension ?? "无");
+        Check("登录态：不会串到别家网盘",
+            string.IsNullOrEmpty(settings.GetCookie("Quark")), settings.GetCookie("Quark") ?? "空");
+
         // 非网盘链接不受影响（保证没误伤）
         var biliResolve = manager.ResolveAsync("https://www.bilibili.com/video/BV1xx411c7mD")
             .GetAwaiter().GetResult();

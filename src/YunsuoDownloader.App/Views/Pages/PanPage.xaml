@@ -90,8 +90,13 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ui:Button Grid.Column="0" Appearance="Secondary" Padding="10,5" Content="返回上级"
-                       IsEnabled="{Binding CanGoUp}" Command="{Binding UpCommand}" />
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <ui:Button Appearance="Secondary" Padding="10,5" Content="返回上级"
+                           IsEnabled="{Binding CanGoUp}" Command="{Binding UpCommand}" />
+                <ui:Button Appearance="Secondary" Padding="10,5" Content="在浏览器打开分享" Margin="6,0,0,0"
+                           ToolTip="阿里云盘的匿名直链已被官方关闭，可以在这里用「浏览器 + 插件嗅探」拿下载地址"
+                           IsEnabled="{Binding CanOpenShare}" Command="{Binding OpenShareCommand}" />
+            </StackPanel>
             <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding ShareTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{Binding DirPathText}" Style="{StaticResource CaptionTextStyle}"

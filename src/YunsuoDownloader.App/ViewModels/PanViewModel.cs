@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -87,6 +88,7 @@ public sealed partial class PanViewModel : ObservableObject
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private string _errorText = string.Empty;
     [ObservableProperty] private bool _hasEmpty = true;
+    [ObservableProperty] private bool _canOpenShare;
 
     public ObservableCollection<PanLoginRow> Logins { get; } = new();
 
@@ -173,7 +175,29 @@ public sealed partial class PanViewModel : ObservableObject
         if (typed.Length > 0) share.Password = typed;
 
         _share = share;
+        CanOpenShare = true;
         await LoadDirAsync(provider.RootId, resetCrumbs: true);
+    }
+
+    /// <summary>
+    /// 在默认浏览器里打开这条分享。
+    ///
+    /// 阿里云盘现在的匿名直链被官方关掉了（410），唯一稳的下载方式是
+    /// 「浏览器里打开分享 → 插件嗅探下载地址」，所以这个按钮是给那条路留的入口。
+    /// </summary>
+    [RelayCommand]
+    private void OpenShare()
+    {
+        if (_share is null) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(_share.OriginalUrl) { UseShellExecute = true });
+            StatusMessage = "已在浏览器中打开分享。阿里云盘可以在这时用浏览器插件嗅探下载地址。";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "打开浏览器失败：" + ex.Message;
+        }
     }
 
     [RelayCommand]
@@ -242,7 +266,10 @@ public sealed partial class PanViewModel : ObservableObject
             }
 
             _share.Title = result.ShareTitle ?? _share.Title;
-            ShareTitle = _share.Title ?? _share.ShareId;
+            // 有的网盘（123）不返回分享名，这时别把裸 ID 当标题显示
+            ShareTitle = string.IsNullOrWhiteSpace(_share.Title) || _share.Title == _share.ShareId
+                ? $"{PanCatalog.Find(_share.ProviderId)?.DisplayName ?? "网盘"}分享"
+                : _share.Title!;
             HasResult = Files.Count > 0;
             HasEmpty = Files.Count == 0;
             DirPathText = _crumbs.Count == 0
@@ -379,6 +406,7 @@ public sealed partial class PanViewModel : ObservableObject
         Files.Clear();
         _crumbs.Clear();
         _share = null;
+        CanOpenShare = false;
         HasResult = false;
         HasError = false;
         ErrorText = string.Empty;
