@@ -98,9 +98,11 @@ public sealed class BaiduPanProvider : IPanProvider
             }
             else
             {
-                result.Error = $"百度 /share/list 返回 errno={errno}" +
-                               (errno == -9 ? "（Cookie 无效或已过期，需含 BDUSS）" : "") +
-                               "：" + list.Snippet;
+                // 百度会把真实原因放在 show_msg 里（如"来晚啦，该分享已被取消"），
+                // 配合 errno 一起给人话，比甩一个 errno 数字有用得多。
+                var showMsg = list.Get("show_msg");
+                result.Error = $"百度网盘解析失败：{ExplainErrno((int)errno)}（errno={errno}）" +
+                               (string.IsNullOrWhiteSpace(showMsg) ? $"：{list.Snippet}" : $"\n百度原话：{showMsg}");
             }
             return result;
         }
@@ -301,6 +303,21 @@ public sealed class BaiduPanProvider : IPanProvider
     {
         new("Referer", $"{Host}/s/{share.ShareId}"),
         new("Origin", Host)
+    };
+
+    /// <summary>把百度的 errno 翻成人话（实测常见值）。</summary>
+    private static string ExplainErrno(int errno) => errno switch
+    {
+        -9 => "Cookie 无效或已过期（需要含 BDUSS 的登录态）",
+        -7 => "链接不存在或已失效",
+        2 => "链接不存在或已失效",
+        105 => "分享不存在",
+        112 => "分享已过期",
+        113 => "分享已被取消",
+        -21 => "分享已被取消",
+        118 => "文件已被删除",
+        110 => "分享已被封禁",
+        _ => "接口返回错误"
     };
 
     private static string Optional(string key, string? value)

@@ -229,7 +229,17 @@ public sealed partial class PanViewModel : ObservableObject
 
             Files.Clear();
             foreach (var entry in result.Entries)
-                Files.Add(new PanFileVm(entry));
+            {
+                var row = new PanFileVm(entry);
+                // 勾选状态一变就刷新"已选择 N 个文件 / 下载按钮是否可用"。
+                // 之前是靠 CheckBox 的 Click 事件驱动的，用键盘空格、或者程序内改状态时不会触发，
+                // 按钮就会一直灰着。
+                row.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(PanFileVm.IsSelected)) UpdateSelectedCount();
+                };
+                Files.Add(row);
+            }
 
             _share.Title = result.ShareTitle ?? _share.Title;
             ShareTitle = _share.Title ?? _share.ShareId;

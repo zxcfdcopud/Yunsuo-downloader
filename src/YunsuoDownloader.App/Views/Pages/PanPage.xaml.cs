@@ -21,12 +21,6 @@ public partial class PanPage : UserControl
         DataContext = _viewModel;
     }
 
-    private void OnFileCheckClick(object sender, RoutedEventArgs e)
-    {
-        // CheckBox 的 IsChecked 通过 Binding 写回 PanFileVm，这里只负责更新"已选择 N 个文件"
-        _viewModel.NotifySelectionChanged();
-    }
-
     /// <summary>从别的页面（例如新建任务页）粘了网盘链接时，直接带过来并开始解析。</summary>
     public void Prefill(string url)
     {

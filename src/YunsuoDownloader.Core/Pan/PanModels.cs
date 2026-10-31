@@ -243,6 +243,33 @@ public static class PanUrl
         try { return new Uri(url).Host.ToLowerInvariant(); }
         catch { return string.Empty; }
     }
+
+    /// <summary>
+    /// 解 123 云盘那种 <c>…/download-v2/?params=&lt;base64url&gt;</c> 跳转地址：
+    /// params 解出来就是下一跳的真实地址（网页版靠 JS 跳，我们直接解，不用跑 JS）。
+    /// 不是这种地址返回 null。
+    /// </summary>
+    public static string? TryDecodeRedirectParams(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+
+        var q = url.IndexOf("params=", StringComparison.OrdinalIgnoreCase);
+        if (q < 0) return null;
+
+        var start = q + "params=".Length;
+        var end = url.IndexOf('&', start);
+        var raw = end < 0 ? url[start..] : url[start..end];
+        if (raw.Length == 0) return null;
+
+        try
+        {
+            var b64 = Uri.UnescapeDataString(raw).Replace('-', '+').Replace('_', '/');
+            while (b64.Length % 4 != 0) b64 += "=";
+            var text = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(b64));
+            return text.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? text : null;
+        }
+        catch { return null; }
+    }
 }
 
 /// <summary>JSON 取值小工具：容忍 null / 类型不一致，路径找不到就返回 null。</summary>

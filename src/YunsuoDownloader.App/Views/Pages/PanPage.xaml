@@ -128,7 +128,6 @@
 
                                 <CheckBox Grid.Column="0" VerticalAlignment="Center"
                                           IsChecked="{Binding IsSelected}"
-                                          Click="OnFileCheckClick"
                                           Visibility="{Binding IsFolder, Converter={StaticResource InverseBoolToVisibility}}" />
 
                                 <TextBlock Grid.Column="1" FontFamily="{StaticResource IconFontFamily}" FontSize="16"

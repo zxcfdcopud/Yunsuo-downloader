@@ -515,6 +515,18 @@ public static class SelfTest
             manager.MatchProvider("https://pan.quark.cn/s/abcdef123456")?.GetType().Name == "PanLinkProvider",
             manager.MatchProvider("https://pan.quark.cn/s/abcdef123456")?.Name ?? "无");
 
+        // 123 的直链是「跳转页 ?params=<base64url>」——这里验解码逻辑（真实场景无法离线复现）
+        var inner = "https://guest-share-free-download-cdn.123295.com/123-1/abc/file.zip?t=1&s=2";
+        var b64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(inner))
+            .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        var decoded = Core.Pan.PanUrl.TryDecodeRedirectParams(
+            $"https://web-pro2.cjjd18.com/download-v2/?params={b64}&is_s3=0");
+        Check("123 直链：跳转页 params 能解回真实地址", decoded == inner, Truncate(decoded, 60));
+        Check("123 直链：不是跳转页时返回 null",
+            Core.Pan.PanUrl.TryDecodeRedirectParams("https://example.com/a.zip") is null);
+        Check("123 直链：params 是乱码时不崩",
+            Core.Pan.PanUrl.TryDecodeRedirectParams("https://x/download-v2/?params=%%%") is null);
+
         // 非网盘链接不受影响（保证没误伤）
         var biliResolve = manager.ResolveAsync("https://www.bilibili.com/video/BV1xx411c7mD")
             .GetAwaiter().GetResult();

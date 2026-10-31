@@ -176,7 +176,7 @@ internal static class Program
     // ------------------------------------------------------------------ probe
     private static async Task<int> ProbeAsync(string[] args)
     {
-        var url = args.Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
+        var url = PositionalArgs(args, "--pwd", "--password").FirstOrDefault();
         if (string.IsNullOrWhiteSpace(url))
         {
             Console.Error.WriteLine("用法：ysd probe <url> [--pwd <提取码>] [--verbose]");
@@ -244,7 +244,7 @@ internal static class Program
     /// </summary>
     private static async Task<int> PanAsync(string[] args)
     {
-        var url = args.Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
+        var url = PositionalArgs(args, "--pwd", "--password", "--dir").FirstOrDefault();
         if (string.IsNullOrWhiteSpace(url))
         {
             Console.Error.WriteLine("用法：ysd pan <分享链接> [--pwd <提取码>] [--dir <目录ID>] [--links] [--verbose]");
@@ -335,7 +335,8 @@ internal static class Program
     // ------------------------------------------------------------------ add
     private static async Task<int> AddAsync(string[] args)
     {
-        var urls = args.Skip(1).Where(a => !a.StartsWith("--")).ToArray();
+        var urls = PositionalArgs(args, "--dir", "--name", "--pwd", "--password", "--connections", "-j",
+            "--quality", "--referer", "--cookie", "--user-agent");
         if (urls.Length == 0) { Console.Error.WriteLine("用法：ysd add <url> [--dir <路径>] [--name <文件名>] [--pwd <提取码>] [--connections N]"); return 2; }
 
         var bundle = await InitAsync();
@@ -482,5 +483,28 @@ internal static class Program
             if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
                 return args[i + 1];
         return null;
+    }
+
+    /// <summary>
+    /// 取"位置参数"（真正的链接），跳过选项本身**和它的值**。
+    ///
+    /// 之前是 <c>args.Where(a =&gt; !a.StartsWith("--"))</c>，
+    /// 于是 <c>ysd add &lt;url&gt; --name 文件名 --dir 目录</c> 会把「文件名」「目录」「2」也当成链接去下载，
+    /// 用户看到的是莫名其妙的多条失败任务。
+    /// </summary>
+    private static string[] PositionalArgs(string[] args, params string[] optionsWithValue)
+    {
+        var set = new HashSet<string>(optionsWithValue, StringComparer.OrdinalIgnoreCase);
+        var list = new List<string>();
+
+        for (var i = 1; i < args.Length; i++)
+        {
+            var a = args[i];
+            if (set.Contains(a)) { i++; continue; }          // 跳过选项值
+            if (a.StartsWith("--", StringComparison.Ordinal)) continue;
+            list.Add(a);
+        }
+
+        return list.ToArray();
     }
 }

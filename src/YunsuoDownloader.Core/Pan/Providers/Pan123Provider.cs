@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace YunsuoDownloader.Core.Pan.Providers;
@@ -148,14 +149,20 @@ public sealed class Pan123Provider : IPanProvider
             return Ok(entry, cached, browser);
 
         var headers = BaseHeaders(share);
+
+        // 2026-10 实测：分享文件走「分享」接口就能匿名取直链；
+        // /api/file/download_info 是"个人网盘"接口，未登录直接回 code=20101。
+        // 分享接口要求的字段名是 S3keyFlag / Size / Etag（大小写敏感，缺一个就 400）。
         var body = new
         {
-            etag = entry.Extra.GetValueOrDefault("Etag"),
+            shareKey = share.ShareId,
             fileId = long.TryParse(entry.Id, out var fid) ? fid : 0,
-            fileName = Path.GetFileNameWithoutExtension(entry.Name),
+            isUseTransCode = true,
             type = 0,
+            @event = "share_download",
             s3keyFlag = entry.Extra.GetValueOrDefault("S3KeyFlag"),
-            size = entry.Size
+            size = entry.Size,
+            etag = entry.Extra.GetValueOrDefault("Etag")
         };
 
         PanResponse? resp = null;
@@ -163,7 +170,7 @@ public sealed class Pan123Provider : IPanProvider
         {
             foreach (var prefix in new[] { "/api", "/b/api" })
             {
-                resp = await browser.PostJsonAsync($"{baseUrl}{prefix}/file/download_info", body, headers, ct)
+                resp = await browser.PostJsonAsync($"{baseUrl}{prefix}/share/download/info", body, headers, ct)
                     .ConfigureAwait(false);
                 if (resp.Status == 404) continue;
                 if (resp.Root is not null) break;
@@ -171,27 +178,89 @@ public sealed class Pan123Provider : IPanProvider
             if (resp?.Root is not null) break;
         }
 
-        var url = resp?.Get("data", "DownloadUrl") ?? resp?.Get("data", "downloadUrl");
+        var url = resp?.Get("data", "DownloadURL") ?? resp?.Get("data", "DownloadUrl")
+                  ?? resp?.Get("data", "downloadUrl");
         if (string.IsNullOrWhiteSpace(url))
         {
             var code = resp?.GetLong("code") ?? -1;
             var message = resp?.Get("message") ?? resp?.Snippet ?? "无响应";
 
-            // 2026-10 实测：未登录时 123 对取直链回 code=20101「未登录」
+            // 未登录（取的是个人网盘接口）或文件被限制时给可操作的说明
             if (code is 20101 or 20102 or 401)
             {
                 return PanDownloadLink.Fail(
-                    $"123 云盘要求先登录才能取直链（接口返回 code={code}「{message}」）。\n" +
+                    $"123 云盘要求先登录才能取这个文件的直链（code={code}「{message}」）。\n" +
                     "请到「网盘解析」页点 123 云盘那一行的「登录」，登录后再试一次。");
             }
 
             return PanDownloadLink.Fail(
                 $"123 云盘取直链失败（code={code}）：{message}\n" +
-                "常见原因：分享方关闭了下载、文件需要登录、或接口改版。");
+                "常见原因：分享方关闭了下载、文件被和谐，或接口改版。");
         }
 
-        return Ok(entry, url, browser);
+        // 123 返回的 DownloadURL 不是文件本身，还要走两段跳转（见 ResolveChainAsync）
+        var final = await ResolveChainAsync(url, share, browser, ct).ConfigureAwait(false);
+        return Ok(entry, final, browser);
     }
+
+    /// <summary>
+    /// 把 123 的下载地址解开到真正的文件 URL。
+    ///
+    /// 2026-10 实测的跳转链（三段）：
+    ///   ① <c>web-pro2.cjjd18.com/download-v2/?params=&lt;base64url&gt;</c>
+    ///      —— 一个 JS 跳转页（返回 HTML），但 params 解码后就是下一跳，
+    ///      所以不用执行 JS，直接 base64 解出来。
+    ///   ② <c>guest-share-free-download-cdn.…</c>
+    ///      —— 返回 HTTP 210 + JSON <c>{"data":{"redirect_url":"…"}}</c>（不是标准 3xx！）
+    ///   ③ <c>*.pd1.cjjd19.com/…</c> —— 才是真正的文件（200 + octet-stream）。
+    ///
+    /// 只对"网关域名"发请求、只读 JSON，避免把 100 MB 的文件整个读进内存。
+    /// </summary>
+    private static async Task<string> ResolveChainAsync(string url, PanShare share, PanBrowser browser,
+        CancellationToken ct)
+    {
+        var headers = BaseHeaders(share);
+
+        for (var hop = 0; hop < 4; hop++)
+        {
+            // ① 跳转页：params 里就是下一跳
+            var decoded = PanUrl.TryDecodeRedirectParams(url);
+            if (decoded is not null)
+            {
+                browser.Diag($"123 跳转：解出 params -> {Shorten(decoded)}");
+                url = decoded;
+                continue;
+            }
+
+            if (!IsGateway(url)) return url;
+
+            // ②/③ 网关：只读 JSON，不是 JSON 就说明已经到文件了
+            var resp = await browser.GetAsync(url, headers, ct).ConfigureAwait(false);
+            var next = resp.Get("data", "redirect_url") ?? resp.Get("redirect_url");
+            if (string.IsNullOrWhiteSpace(next))
+            {
+                browser.Diag($"123 跳转：{Shorten(url)} 没有 redirect_url，按最终地址处理（HTTP {resp.Status}）");
+                return url;
+            }
+
+            browser.Diag($"123 跳转：{Shorten(url)} -> {Shorten(next)}");
+            url = next;
+        }
+
+        return url;
+    }
+
+    /// <summary>下载网关的域名特征（只对这些地址发 GET，避免误拉文件本体）。</summary>
+    private static bool IsGateway(string url)
+    {
+        var host = PanUrl.Host(url);
+        return host.Contains("download-v2", StringComparison.OrdinalIgnoreCase)
+               || host.Contains("guest-share-free-download-cdn", StringComparison.OrdinalIgnoreCase)
+               || host.Contains("123295.com", StringComparison.OrdinalIgnoreCase)
+               || url.Contains("/download-v2/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Shorten(string url) => url.Length <= 70 ? url : url[..70] + "…";
 
     // ------------------------------------------------------------------ 内部
     private static PanDownloadLink Ok(PanEntry entry, string url, PanBrowser browser) => new()
