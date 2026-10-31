@@ -546,6 +546,35 @@ public static class SelfTest
         Check("登录态：不会串到别家网盘",
             string.IsNullOrEmpty(settings.GetCookie("Quark")), settings.GetCookie("Quark") ?? "空");
 
+        // ---- 最近下载的日期分组 ----
+        var todayItem = new DownloadItem { CreatedAt = DateTime.Now };
+        var yesterdayItem = new DownloadItem { CreatedAt = DateTime.Now.AddDays(-1) };
+        var midMonthItem = new DownloadItem { CreatedAt = DateTime.Now.AddDays(-3) };
+        var oldItem = new DownloadItem { CreatedAt = DateTime.Now.AddMonths(-2) };
+
+        Check("日期分组：今天 -> 0", todayItem.DateGroupOrder == 0, todayItem.DateGroupName);
+        Check("日期分组：昨天 -> 1", yesterdayItem.DateGroupOrder == 1, yesterdayItem.DateGroupName);
+        Check("日期分组：3 天前归到本周或本月",
+            midMonthItem.DateGroupOrder is 2 or 3, midMonthItem.DateGroupName);
+        Check("日期分组：两个月前 -> 更早", oldItem.DateGroupOrder == 4, oldItem.DateGroupName);
+        Check("日期分组：标题与序号一致",
+            todayItem.DateGroupName == "今天" && oldItem.DateGroupName == "更早");
+
+        // ---- 设置迁移（最小化到托盘那段）----
+        var legacy = new AppSettings { SettingsVersion = 0, MinimizeToTray = true };
+        Core.Services.SettingsService.Migrate(legacy);
+        Check("设置迁移：1.0 的「最小化到托盘」被关掉（恢复系统动画）",
+            !legacy.MinimizeToTray && legacy.SettingsVersion == Core.Services.SettingsService.CurrentSettingsVersion,
+            $"MinimizeToTray={legacy.MinimizeToTray}, 版本={legacy.SettingsVersion}");
+
+        var upgraded = new AppSettings
+        {
+            SettingsVersion = Core.Services.SettingsService.CurrentSettingsVersion,
+            MinimizeToTray = true     // 用户自己又打开了
+        };
+        Core.Services.SettingsService.Migrate(upgraded);
+        Check("设置迁移：已迁移过的用户再次启动不会被反复改", upgraded.MinimizeToTray);
+
         // 非网盘链接不受影响（保证没误伤）
         var biliResolve = manager.ResolveAsync("https://www.bilibili.com/video/BV1xx411c7mD")
             .GetAwaiter().GetResult();

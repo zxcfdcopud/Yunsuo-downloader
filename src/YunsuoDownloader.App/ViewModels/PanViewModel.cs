@@ -329,6 +329,16 @@ public sealed partial class PanViewModel : ObservableObject
             return;
         }
 
+        // 需要登录的网盘先在本地拦一道：不然 10 个文件会打 10 次必然失败的接口，
+        // 用户还得等半天才看到第一句"需要登录"。
+        var provider = PanCatalog.Find(_share.ProviderId);
+        if (provider is { RequiresLogin: true } && !Service.HasLogin(provider.Id))
+        {
+            StatusMessage = $"{provider.DisplayName} 需要先登录才能取直链。\n" +
+                            $"请点上面那一行的「登录」，登录完成后再点「下载选中」。";
+            return;
+        }
+
         IsBusy = true;
         var added = 0;
         var errors = new List<string>();
@@ -378,6 +388,14 @@ public sealed partial class PanViewModel : ObservableObject
     private async Task CopyLink(PanFileVm? row)
     {
         if (_share is null || row is null || row.IsFolder) return;
+
+        var provider = PanCatalog.Find(_share.ProviderId);
+        if (provider is { RequiresLogin: true } && !Service.HasLogin(provider.Id))
+        {
+            StatusMessage = $"{provider.DisplayName} 需要先登录才能取直链，请先点上面那一行的「登录」。";
+            return;
+        }
+
         IsBusy = true;
         try
         {

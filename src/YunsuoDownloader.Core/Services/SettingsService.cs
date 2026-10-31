@@ -46,8 +46,11 @@ public sealed class SettingsService
 
     /// <summary>
     /// 一次性设置迁移。只做"老版本默认值写错了"这类修正，不碰用户主动改过的选项。
+    ///
+    /// 公开出来是为了让命令行自检（ysd selftest）能直接验证迁移逻辑 ——
+    /// 这段代码只在"读老配置文件"时跑一次，平时很难复现。
     /// </summary>
-    private static void Migrate(AppSettings s)
+    public static void Migrate(AppSettings s)
     {
         if (s.SettingsVersion >= CurrentSettingsVersion) return;
 
