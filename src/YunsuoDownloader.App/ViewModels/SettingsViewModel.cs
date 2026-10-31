@@ -490,7 +490,6 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>需要在界面上列出的网盘（即使还没配 Cookie 也显示出来）。</summary>
     public static (string Provider, string Display)[] KnownPans => new[]
     {
-        ("Aliyun", "阿里云盘（无需登录，建议直接粘贴分享链接）"),
         ("Quark", "夸克网盘（需要 Cookie）"),
         ("Pan123", "123 网盘（需要 Cookie）"),
         ("Baidu", "百度网盘（需要 Cookie）")

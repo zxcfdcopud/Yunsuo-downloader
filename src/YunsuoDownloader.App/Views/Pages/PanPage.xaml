@@ -22,7 +22,7 @@
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="网盘解析" Style="{StaticResource PageTitleStyle}" />
             <TextBlock Style="{StaticResource CaptionTextStyle}"
-                       Text="支持百度网盘 / 阿里云盘 / 夸克网盘 / 123 云盘。粘分享链接（提取码会一起识别），进文件夹挑文件，勾选后批量下载。" />
+                       Text="支持百度网盘 / 夸克网盘 / 123 云盘。粘分享链接（提取码会一起识别），进文件夹挑文件，勾选后批量下载。" />
         </StackPanel>
 
         <!-- ==================== 输入 ==================== -->
@@ -83,36 +83,51 @@
         </Border>
 
         <!-- ==================== 结果标题栏 ==================== -->
+        <!--
+            两行布局：窗口最窄（960）时，一行放不下「返回上级 + 打开分享 + 标题 + 已选数量 + 全选 + 清空 + 下载」，
+            右侧按钮会被裁掉（用户反馈过）。所以把"导航/信息"和"批量操作"分成两行，任何宽度都不会挤爆。
+        -->
         <Grid Grid.Row="3" Margin="0,12,0,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <ui:Button Appearance="Secondary" Padding="10,5" Content="返回上级"
-                           IsEnabled="{Binding CanGoUp}" Command="{Binding UpCommand}" />
-                <ui:Button Appearance="Secondary" Padding="10,5" Content="在浏览器打开分享" Margin="6,0,0,0"
-                           ToolTip="阿里云盘的匿名直链已被官方关闭，可以在这里用「浏览器 + 插件嗅探」拿下载地址"
-                           IsEnabled="{Binding CanOpenShare}" Command="{Binding OpenShareCommand}" />
-            </StackPanel>
-            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-                <TextBlock Text="{Binding ShareTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding DirPathText}" Style="{StaticResource CaptionTextStyle}"
-                           TextTrimming="CharacterEllipsis" />
-            </StackPanel>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <ui:Button Appearance="Secondary" Padding="10,5" Content="返回上级"
+                               IsEnabled="{Binding CanGoUp}" Command="{Binding UpCommand}" />
+                    <ui:Button Appearance="Secondary" Padding="10,5" Content="在浏览器打开分享" Margin="6,0,0,0"
+                               ToolTip="在浏览器里打开这条分享（有些网盘要配合浏览器插件嗅探才能拿到下载地址）"
+                               IsEnabled="{Binding CanOpenShare}" Command="{Binding OpenShareCommand}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ShareTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding DirPathText}" Style="{StaticResource CaptionTextStyle}"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <TextBlock Text="{Binding SelectedCountText}" VerticalAlignment="Center" Margin="0,0,10,0"
+            <Grid Grid.Row="1" Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding SelectedCountText}" VerticalAlignment="Center"
                            Style="{StaticResource CaptionTextStyle}" />
-                <ui:Button Appearance="Secondary" Content="全选" Command="{Binding ToggleSelectAllCommand}" />
-                <ui:Button Appearance="Secondary" Content="清空选择" Margin="6,0,0,0"
-                           Command="{Binding ClearSelectionCommand}" />
-                <ui:Button Appearance="Primary" Content="下载选中" Margin="6,0,0,0"
-                           Command="{Binding DownloadSelectedCommand}"
-                           IsEnabled="{Binding CanDownload}" />
-            </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <ui:Button Appearance="Secondary" Content="全选" Command="{Binding ToggleSelectAllCommand}" />
+                    <ui:Button Appearance="Secondary" Content="清空选择" Margin="6,0,0,0"
+                               Command="{Binding ClearSelectionCommand}" />
+                    <ui:Button Appearance="Primary" Content="下载选中" Margin="6,0,0,0"
+                               Command="{Binding DownloadSelectedCommand}"
+                               IsEnabled="{Binding CanDownload}" />
+                </StackPanel>
+            </Grid>
         </Grid>
 
         <!-- ==================== 文件列表 ==================== -->
@@ -126,8 +141,8 @@
                                     <ColumnDefinition Width="32" />
                                     <ColumnDefinition Width="28" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="110" />
-                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="96" />
+                                    <ColumnDefinition Width="124" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 

@@ -380,7 +380,8 @@ public sealed class YtDlpEngine : DownloadEngineBase
             // 直接输出裸路径会走 Windows 控制台的 ANSI 代码页（中文系统是 GBK），
             // 我们按 UTF-8 解码就会得到乱码，进而 File.Exists 判断失败。
             "--print", "after_move:##FILE##%(filepath)j",
-            "--format", BuildFormatSelector(_settings.PreferredVideoQuality)
+            "--format", BuildFormatSelector(
+                string.IsNullOrWhiteSpace(item.Quality) ? _settings.PreferredVideoQuality : item.Quality!)
         };
 
         if (Tools.Ffmpeg.Found)
@@ -458,14 +459,19 @@ public sealed class YtDlpEngine : DownloadEngineBase
         return name + ".%(ext)s";
     }
 
-    /// <summary>把设置里的清晰度偏好翻译成 yt-dlp 的 -f 表达式。</summary>
-    public static string BuildFormatSelector(string preference) => preference switch
+    /// <summary>
+    /// 把清晰度偏好翻译成 yt-dlp 的 -f 表达式。
+    /// 支持 "best" / "audio" / 任意数字档位（1080、720、568…），
+    /// 数字档位就按"不高于这个高度"取，没有就退到最佳。
+    /// </summary>
+    public static string BuildFormatSelector(string? preference)
     {
-        "2160" or "1440" or "1080" or "720" or "480" or "360" =>
-            $"bv*[height<={preference}]+ba/b[height<={preference}]/bv*+ba/b",
-        "audio" => "ba/b",
-        _ => "bv*+ba/b"
-    };
+        if (string.IsNullOrWhiteSpace(preference)) return "bv*+ba/b";
+        if (string.Equals(preference, "audio", StringComparison.OrdinalIgnoreCase)) return "ba/b";
+        if (int.TryParse(preference.Trim(), out var height) && height >= 144)
+            return $"bv*[height<={height}]+ba/b[height<={height}]/bv*+ba/b";
+        return "bv*+ba/b";
+    }
 
     // ------------------------------------------------------------------ 控制
     public override Task PauseAsync(DownloadItem item)

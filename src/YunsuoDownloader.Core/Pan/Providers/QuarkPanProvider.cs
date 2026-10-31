@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using YunsuoDownloader.Core.Utils;
 
 namespace YunsuoDownloader.Core.Pan.Providers;
 
@@ -145,6 +146,14 @@ public sealed class QuarkPanProvider : IPanProvider
         if (!string.IsNullOrWhiteSpace(url))
             return Ok(entry, url, browser, "夸克分享直链");
 
+        // 夸克对"分享直下"有单文件体积上限（实测 10 GB 的文件会回 download file size limit），
+        // 这时转存到网盘也未必能成（多半是容量不够），所以先把原因说清楚。
+        var directMessage = direct.Get("message") ?? string.Empty;
+        if (directMessage.Contains("size limit", StringComparison.OrdinalIgnoreCase))
+        {
+            browser.Diag("分享直下报了 size limit，继续尝试转存路线");
+        }
+
         browser.Diag("分享直下没给地址，改走「转存 → file/download」");
 
         // ---------- 路线 2：转存后取直链（需要登录态）----------
@@ -192,16 +201,45 @@ public sealed class QuarkPanProvider : IPanProvider
             var status = task.GetLong("data", "status");
             if (status == 2) savedFid = task.Get("data", "save_as", "save_as_top_fids", "0");
             if (status == 3)
+            {
+                // 实测最常见的是 code=32003 capacity limit（网盘剩余容量不够转存）
+                var code = task.GetLong("code");
+                if (code == 32003 || task.Snippet.Contains("capacity limit", StringComparison.OrdinalIgnoreCase))
+                {
+                    var need = task.GetLong("data", "save_as", "min_save_file_size");
+                    var remain = task.GetLong("data", "save_as", "remain_capacity");
+                    return PanDownloadLink.Fail(
+                        "夸克网盘容量不足，没法把这个文件转存到自己网盘（转存是取直链的前置步骤）。\n" +
+                        (need > 0
+                            ? $"  这个文件需要 {Format.Bytes(need)}；你网盘的剩余容量为 {(remain < 0 ? "负数（已超容）" : Format.Bytes(remain))}。\n"
+                            : "") +
+                        "办法：清空回收站或删掉些文件腾出空间，或换个小一点的文件再试。\n" +
+                        $"（夸克返回：{code} capacity limit）");
+                }
+
                 return PanDownloadLink.Fail("夸克转存任务失败：" + (task.Get("data", "message") ?? task.Snippet));
+            }
         }
 
         savedFid ??= entry.Id;
         var dl = await browser.PostJsonAsync($"{Api}/file/download{Query}",
             new { fids = new[] { savedFid } }, headers, ct).ConfigureAwait(false);
         url = FirstDownloadUrl(dl);
-        return string.IsNullOrWhiteSpace(url)
-            ? PanDownloadLink.Fail("夸克取直链失败：" + (dl.Get("message") ?? dl.Snippet))
-            : Ok(entry, url, browser, "夸克转存直链");
+        if (!string.IsNullOrWhiteSpace(url))
+            return Ok(entry, url, browser, "夸克转存直链");
+
+        var dlMessage = dl.Get("message") ?? dl.Snippet;
+        // 实测：10 GB 的文件转存能成功，但"取下载地址"这一步会被夸克的单文件体积上限拦下
+        if (dlMessage.Contains("size limit", StringComparison.OrdinalIgnoreCase))
+        {
+            return PanDownloadLink.Fail(
+                $"夸克限制单文件下载体积：这个文件 {Format.Bytes(entry.Size)}，超过了当前账号能下载的上限" +
+                "（非会员与会员的额度不同）。\n" +
+                "办法：升级会员，或换一个小一点的文件；也可以先在夸克网页上直接下载，看是否同样被拦。\n" +
+                $"（夸克返回：{dlMessage}）");
+        }
+
+        return PanDownloadLink.Fail("夸克取直链失败：" + dlMessage);
     }
 
     // ------------------------------------------------------------------ 内部

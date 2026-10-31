@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -133,16 +133,29 @@ public sealed partial class PanViewModel : ObservableObject
             Owner = Application.Current?.MainWindow
         };
 
-        var ok = dialog.ShowDialog();
-        if (ok == true && dialog.Succeeded && !string.IsNullOrWhiteSpace(dialog.CookieHeader))
+        _ = dialog.ShowDialog();
+
+        // 判断成功只看对话框自己记的 Succeeded，不看 ShowDialog() 的返回值
+        // （关窗方式不同会得到 true / false / null，靠它判断会漏掉成功的情况）。
+        if (dialog.Succeeded && !string.IsNullOrWhiteSpace(dialog.CookieHeader))
         {
             AppServices.Settings.SetCredential(provider.Id, provider.DisplayName, dialog.CookieHeader);
             RefreshLogins();
             StatusMessage = $"已保存{provider.DisplayName}的登录态（DPAPI 加密，只存在本机）。";
+
+            // 已经解析过分享的话，登录完立刻重新拉一次目录 ——
+            // 用户登录的目的通常就是"继续刚才那个分享"，不该让他再点一次解析。
+            if (_share is not null)
+            {
+                var dirId = _crumbs.Count == 0
+                    ? PanCatalog.Find(_share.ProviderId)?.RootId ?? _share.ProviderId
+                    : _crumbs[^1].Id;
+                _ = LoadDirAsync(dirId, resetCrumbs: false);
+            }
         }
         else
         {
-            StatusMessage = $"{provider.DisplayName} 没有完成登录。";
+            StatusMessage = $"{provider.DisplayName} 没有完成登录（已取消，或没取到 Cookie）。";
         }
     }
 
@@ -160,7 +173,7 @@ public sealed partial class PanViewModel : ObservableObject
         var provider = PanCatalog.Match(url);
         if (provider is null)
         {
-            StatusMessage = "这不是支持的四家网盘链接（百度 / 阿里云盘 / 夸克 / 123）。";
+            StatusMessage = "这不是支持的网盘链接（百度 / 夸克 / 123 云盘）。";
             return;
         }
 
@@ -182,8 +195,8 @@ public sealed partial class PanViewModel : ObservableObject
     /// <summary>
     /// 在默认浏览器里打开这条分享。
     ///
-    /// 阿里云盘现在的匿名直链被官方关掉了（410），唯一稳的下载方式是
-    /// 「浏览器里打开分享 → 插件嗅探下载地址」，所以这个按钮是给那条路留的入口。
+    /// 有些网盘（含已被官方关掉匿名直链的）只有在网页里配合浏览器插件才能拿到地址，
+    /// 这个按钮就是把用户送过去：在浏览器里打开分享 → 插件嗅探。
     /// </summary>
     [RelayCommand]
     private void OpenShare()
@@ -192,7 +205,7 @@ public sealed partial class PanViewModel : ObservableObject
         try
         {
             Process.Start(new ProcessStartInfo(_share.OriginalUrl) { UseShellExecute = true });
-            StatusMessage = "已在浏览器中打开分享。阿里云盘可以在这时用浏览器插件嗅探下载地址。";
+            StatusMessage = "已在浏览器中打开分享。可以在这时用浏览器插件嗅探下载地址。";
         }
         catch (Exception ex)
         {

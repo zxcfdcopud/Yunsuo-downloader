@@ -407,7 +407,6 @@ public static class SelfTest
         Check("磁力 -> Magnet", manager.MatchProvider("magnet:?xt=urn:btih:0123456789abcdef&dn=test")?.Name == "Magnet");
         var thunderUrl = "thunder://" + Convert.ToBase64String(Encoding.UTF8.GetBytes("AAhttp://example.com/a.mp4ZZ"));
         Check("迅雷 -> Thunder", manager.MatchProvider(thunderUrl)?.Name == "Thunder");
-        Check("阿里云盘 -> Aliyun", manager.MatchProvider("https://www.alipan.com/s/abcdefg123")?.Name == "Aliyun");
         Check("夸克网盘 -> Quark", manager.MatchProvider("https://pan.quark.cn/s/abcdef123456")?.Name == "Quark");
         Check("百度网盘 -> Baidu", manager.MatchProvider("https://pan.baidu.com/s/1AbCdEfGh")?.Name == "Baidu");
         Check("123 网盘 -> Pan123", manager.MatchProvider("https://www.123pan.com/s/abcd-efgh")?.Name == "Pan123");
@@ -487,8 +486,6 @@ public static class SelfTest
         {
             ("https://pan.baidu.com/s/1AbCdEfGh", "Baidu", "1AbCdEfGh", null),
             ("https://pan.baidu.com/s/1AbCdEfGh?pwd=abcd", "Baidu", "1AbCdEfGh", "abcd"),
-            ("https://www.alipan.com/s/abcdefg123", "Aliyun", "abcdefg123", null),
-            ("https://www.aliyundrive.com/s/xyz789?pwd=1234", "Aliyun", "xyz789", "1234"),
             ("https://pan.quark.cn/s/abcdef123456", "Quark", "abcdef123456", null),
             ("https://pan.quark.cn/s/abcdef123456?pwd=8888", "Quark", "abcdef123456", "8888"),
             ("https://www.123pan.com/s/abcd-efgh", "Pan123", "abcd-efgh", null),
@@ -508,7 +505,7 @@ public static class SelfTest
                 $"pwd={share?.Password ?? "无"}");
         }
 
-        Check("网盘：四家都注册了", Core.Pan.PanCatalog.Providers.Count == 4,
+        Check("网盘：三家都注册了", Core.Pan.PanCatalog.Providers.Count == 3,
             string.Join("/", Core.Pan.PanCatalog.Providers.Select(p => p.Id)));
         Check("网盘：普通直链不误判为网盘", !Core.Pan.PanCatalog.IsPanUrl("https://example.com/a.zip"));
         Check("网盘：网盘链接会走 PanLinkProvider",
@@ -574,6 +571,17 @@ public static class SelfTest
         };
         Core.Services.SettingsService.Migrate(upgraded);
         Check("设置迁移：已迁移过的用户再次启动不会被反复改", upgraded.MinimizeToTray);
+
+        // ---- 清晰度档位（点画质标签直接下载时用）----
+        Check("清晰度：数字档位翻成 height<= 表达式",
+            Core.Engine.YtDlpEngine.BuildFormatSelector("1080").Contains("height<=1080", StringComparison.Ordinal),
+            Core.Engine.YtDlpEngine.BuildFormatSelector("1080"));
+        Check("清晰度：非常见高度也支持（如 568p）",
+            Core.Engine.YtDlpEngine.BuildFormatSelector("568").Contains("height<=568", StringComparison.Ordinal));
+        Check("清晰度：audio 走纯音频", Core.Engine.YtDlpEngine.BuildFormatSelector("audio") == "ba/b");
+        Check("清晰度：best / 空值走最佳",
+            Core.Engine.YtDlpEngine.BuildFormatSelector("best") == "bv*+ba/b" &&
+            Core.Engine.YtDlpEngine.BuildFormatSelector(null) == "bv*+ba/b");
 
         // 非网盘链接不受影响（保证没误伤）
         var biliResolve = manager.ResolveAsync("https://www.bilibili.com/video/BV1xx411c7mD")

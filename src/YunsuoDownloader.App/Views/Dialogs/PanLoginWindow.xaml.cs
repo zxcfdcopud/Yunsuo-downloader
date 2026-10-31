@@ -124,6 +124,12 @@ public partial class PanLoginWindow : FluentWindow
 
             CookieHeader = header;
             Succeeded = true;
+
+            // 必须显式设 DialogResult：ShowDialog() 的返回值有 true / false / null 三种，
+            // 只 Close() 不设 DialogResult 时拿到的是 null，
+            // 调用方写 `if (ok == true)` 就会被判成"没登录成功"——这正是用户反馈
+            // "点了我已完成登录，主页没反应"的原因。
+            DialogResult = true;
             Close();
         }
         catch (Exception ex)

@@ -1,4 +1,4 @@
-<UserControl x:Class="YunsuoDownloader.App.Views.Pages.SettingsPage"
+﻿<UserControl x:Class="YunsuoDownloader.App.Views.Pages.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
@@ -220,7 +220,7 @@
                 <StackPanel>
                     <TextBlock Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,10"
                                TextWrapping="Wrap"
-                               Text="推荐在「网盘解析」页点「登录」用内嵌浏览器登录，不用手抄 Cookie。这里保留手动粘贴：阿里云盘 / 123 云盘的公开分享不需要登录；百度 / 夸克 需要登录态。Cookie 用 Windows DPAPI 加密保存在本机，只有当前 Windows 用户能解密，不会上传。Cookie 会过期，失效后重新登录一次即可。" />
+                               Text="推荐在「网盘解析」页点「登录」用内嵌浏览器登录，不用手抄 Cookie。这里保留手动粘贴：123 云盘的公开分享不需要登录；百度 / 夸克 需要登录态。Cookie 用 Windows DPAPI 加密保存在本机，只有当前 Windows 用户能解密，不会上传。Cookie 会过期，失效后重新登录一次即可。" />
                     <ItemsControl ItemsSource="{Binding PanRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>

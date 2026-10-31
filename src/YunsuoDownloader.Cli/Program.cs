@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using YunsuoDownloader.Core.Models;
 using YunsuoDownloader.Core.Pan;
 using YunsuoDownloader.Core.Services;
@@ -122,7 +122,7 @@ internal static class Program
               ysd add "magnet:?xt=urn:btih:..." --dir D:\Downloads
               ysd add "https://pan.baidu.com/s/1AbCdEfGh" --pwd abcd
               ysd add "https://example.com/big.iso" --connections 2
-              ysd probe "https://www.alipan.com/s/xxxx" --verbose
+              ysd pan "https://www.123pan.com/s/xxxx" --links
               ysd selftest
             """);
         return 0;
@@ -265,7 +265,7 @@ internal static class Program
         var provider = PanCatalog.Match(url);
         if (provider is null)
         {
-            Console.Error.WriteLine("这不是支持的四家网盘链接（百度 / 阿里云盘 / 夸克 / 123）。");
+            Console.Error.WriteLine("这不是支持的网盘链接（百度 / 夸克 / 123 云盘）。");
             return 2;
         }
 

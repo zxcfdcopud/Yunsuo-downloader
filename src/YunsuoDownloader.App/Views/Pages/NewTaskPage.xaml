@@ -98,7 +98,7 @@
                         <TextBlock Text="{Binding DetectedFileName}" Style="{StaticResource CaptionTextStyle}"
                                    Margin="0,4,0,0" />
 
-                        <TextBlock Text="检测到的可用画质（点击下方主按钮即按设置里的画质下载）"
+                        <TextBlock Text="检测到的可用画质（点哪个就按哪个清晰度下载）"
                                    Style="{StaticResource CaptionTextStyle}" Margin="0,10,0,4" />
                         <ItemsControl ItemsSource="{Binding AvailableFormats}">
                             <ItemsControl.ItemsPanel>
@@ -108,10 +108,11 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,6,6" Padding="10,4" CornerRadius="4"
-                                            Background="{DynamicResource SubtleFillColorSecondaryBrush}">
-                                        <TextBlock FontSize="12" Text="{Binding QualityText}" />
-                                    </Border>
+                                    <ui:Button Margin="0,0,6,6" Padding="10,4" Appearance="Secondary"
+                                               FontSize="12" Content="{Binding QualityText}"
+                                               ToolTip="点它直接按这个清晰度开始下载"
+                                               Command="{Binding DataContext.DownloadWithQualityCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

@@ -46,12 +46,18 @@ public interface IPanProvider
         CancellationToken ct);
 }
 
-/// <summary>四家网盘的注册表。</summary>
+/// <summary>
+/// 网盘注册表。
+///
+/// 阿里云盘暂时不在列表里：它的匿名直链接口已被官方关闭（实测 410 Gone），
+/// 剩下唯一的路是"登录 → 转存到自己网盘 → 用 access token 取直链"，
+/// 而 access token 不在 Cookie 里，当前这套 登录态（Cookie）方案拿不到。
+/// 与其放一个"能看不能下"的入口，不如先摘掉，等做完 token 方案再加回来。
+/// </summary>
 public static class PanCatalog
 {
     private static readonly IPanProvider[] All =
     {
-        new Providers.AliyunPanProvider(),
         new Providers.QuarkPanProvider(),
         new Providers.Pan123Provider(),
         new Providers.BaiduPanProvider()

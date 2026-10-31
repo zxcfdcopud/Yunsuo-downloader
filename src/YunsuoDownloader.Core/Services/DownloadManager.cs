@@ -112,7 +112,6 @@ public sealed class DownloadManager : IAsyncDisposable
 
         _resolver = new LinkResolver()
             // 四家网盘统一走适配器：PanLinkProvider 内部复用 PanService 的"列目录 + 取直链"能力
-            .Register(new PanLinkProvider(PanCatalog.Find("Aliyun")!))
             .Register(new PanLinkProvider(PanCatalog.Find("Quark")!))
             .Register(new PanLinkProvider(PanCatalog.Find("Pan123")!))
             .Register(new PanLinkProvider(PanCatalog.Find("Baidu")!))

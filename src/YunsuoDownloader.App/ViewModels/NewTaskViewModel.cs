@@ -308,8 +308,28 @@ public sealed partial class NewTaskViewModel : ObservableObject
     }
 
     // ------------------------------------------------------------------ 添加
+    /// <summary>「开始下载」：按设置里的清晰度下（qualityOverride = null）。</summary>
     [RelayCommand]
-    private async Task AddAsync()
+    private Task AddAsync() => AddCoreAsync(null);
+
+    /// <summary>
+    /// 点某个清晰度标签就直接按这个清晰度下载。
+    /// 之前这些标签只是"展示"，点了没反应（还要自己回上面改下拉框），
+    /// 现在点哪个就下哪个。
+    /// </summary>
+    [RelayCommand]
+    private Task DownloadWithQuality(VideoFormat? format) => AddCoreAsync(QualityKeyOf(format));
+
+    /// <summary>把 yt-dlp 的一路格式翻译成 <see cref="AddDownloadRequest.Quality"/> 用的档位字符串。</summary>
+    private static string? QualityKeyOf(VideoFormat? format)
+    {
+        if (format is null) return null;
+        if (format.Height >= 144) return format.Height.ToString();
+        if (format.HasAudio && !format.HasVideo) return "audio";
+        return "best";
+    }
+
+    private async Task AddCoreAsync(string? qualityOverride)
     {
         var urls = ParseUrls();
         if (urls.Length == 0)
@@ -342,7 +362,9 @@ public sealed partial class NewTaskViewModel : ObservableObject
                         FileName = urls.Length == 1 ? DetectedFileName : null,
                         Thumbnail = urls.Length == 1 ? PreviewThumbnail : null,
                         Password = _passwords.GetValueOrDefault(url),
-                        Connections = SelectedConnection?.Value ?? 0
+                        Connections = SelectedConnection?.Value ?? 0,
+                        // 点清晰度标签时带的档位；走「开始下载」时为 null，由引擎用设置里的清晰度
+                        Quality = qualityOverride
                     });
                     if (item.Status == DownloadStatus.Failed) { fail++; errors.Add(item.ErrorMessage ?? url); }
                     else ok++;
