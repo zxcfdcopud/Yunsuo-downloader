@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
 
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
@@ -7,9 +7,9 @@
     <InvariantGlobalization>false</InvariantGlobalization>
     <Product>云梭下载器</Product>
     <Company>Yunsuo Downloader Project</Company>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
     <Copyright>Copyright (c) 2025 云梭下载器</Copyright>
     <NeutralLanguage>zh-CN</NeutralLanguage>
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>

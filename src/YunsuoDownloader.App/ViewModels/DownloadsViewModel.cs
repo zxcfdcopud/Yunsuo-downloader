@@ -38,6 +38,7 @@ public sealed partial class DownloadsViewModel : ObservableObject
     {
         ItemsView = CollectionViewSource.GetDefaultView(Items);
         ItemsView.Filter = FilterItem;
+        ConfigureDateGrouping();
 
         if (AppServices.Initialized)
         {
@@ -128,6 +129,39 @@ public sealed partial class DownloadsViewModel : ObservableObject
         => !string.IsNullOrEmpty(source) && source.Contains(q, StringComparison.OrdinalIgnoreCase);
 
     partial void OnSearchTextChanged(string value) => ItemsView.Refresh();
+
+    // ------------------------------------------------------------------ 日期分组
+    /// <summary>是否按日期分组（默认开）。关掉就是原来的平铺列表。</summary>
+    [ObservableProperty] private bool _groupByDate = true;
+
+    partial void OnGroupByDateChanged(bool value)
+    {
+        ConfigureDateGrouping();
+        ItemsView.Refresh();
+    }
+
+    /// <summary>
+    /// 给列表装上「今天 / 昨天 / 本周 / 本月 / 更早」分组。
+    ///
+    /// 排序和分组必须一起设：WPF 的分组顺序取决于条目在源集合里的先后，
+    /// 所以先按 <see cref="DownloadItem.DateGroupOrder"/> 升序把"今天"排到最前，
+    /// 再按创建时间倒序让最新的任务在组内排第一。
+    /// </summary>
+    private void ConfigureDateGrouping()
+    {
+        if (ItemsView is not ListCollectionView view) return;
+
+        view.SortDescriptions.Clear();
+        view.GroupDescriptions.Clear();
+
+        if (!GroupByDate) return;
+
+        view.SortDescriptions.Add(new SortDescription(
+            nameof(DownloadItem.DateGroupOrder), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(
+            nameof(DownloadItem.CreatedAt), ListSortDirection.Descending));
+        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DownloadItem.DateGroupName)));
+    }
     partial void OnFilterChanged(DownloadFilter value) => ItemsView.Refresh();
 
     /// <summary>与界面上筛选下拉框的索引一一对应：全部/下载中/已完成/失败。</summary>

@@ -96,11 +96,6 @@ public sealed class LinkResolver
         if (provider is null)
             return ResolveResult.Fail("LinkResolver", "没有解析器能处理这个链接");
 
-        // 网盘解析在 1.0 版本暂不公开（代码已实现，下个版本打开 Features.PanEnabled 即可）。
-        // 这里给一条明确、友好的提示，避免用户以为是程序坏了。
-        if (!Features.PanEnabled && LinkResolver.IsPanProvider(provider.Name))
-            return ResolveResult.Fail(provider.Name, Features.PanDisabledMessage);
-
         ctx.Log($"使用解析器：{provider.DisplayName}");
         try
         {
@@ -115,8 +110,4 @@ public sealed class LinkResolver
             return ResolveResult.Fail(provider.Name, $"{provider.DisplayName} 解析失败：{ex.Message}");
         }
     }
-
-    /// <summary>这几个是网盘分享解析器（受 <see cref="Features.PanEnabled"/> 控制）。</summary>
-    public static bool IsPanProvider(string? providerName) =>
-        providerName is "Baidu" or "Aliyun" or "Quark" or "Pan123";
 }

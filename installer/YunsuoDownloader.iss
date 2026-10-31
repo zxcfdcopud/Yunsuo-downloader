@@ -10,7 +10,7 @@
 
 #define AppName        "云梭下载器"
 #define AppNameCN      "云梭下载器"
-#define AppVersion     "1.0.0"
+#define AppVersion     "1.1.0"
 #define AppPublisher   "Yunsuo Downloader Project"
 #define AppExeName     "YunsuoDownloader.exe"
 #define SourceDir      "..\artifacts\publish"

@@ -23,7 +23,8 @@ public partial class MainWindow : FluentWindow
     public event EventHandler? ForceClosed;
 
     /// <summary>页面标签（和 NavList 的 Tag 一致）。</summary>
-    private static readonly string[] AllPages = { "downloads", "newtask", "extension", "settings", "about" };
+    private static readonly string[] AllPages =
+        { "downloads", "newtask", "pan", "extension", "settings", "about" };
 
     public MainWindow()
     {
@@ -80,6 +81,7 @@ public partial class MainWindow : FluentWindow
         UserControl page = tag switch
         {
             "newtask" => new NewTaskPage(),
+            "pan" => new PanPage(),
             "extension" => new ExtensionPage(),
             "settings" => new SettingsPage(),
             "about" => new AboutPage(),
@@ -174,6 +176,13 @@ public partial class MainWindow : FluentWindow
     {
         NavigateTo("newtask");
         if (GetOrCreatePage("newtask") is NewTaskPage page) page.Prefill(url);
+    }
+
+    /// <summary>切换到"网盘解析"并带上链接（网盘链接走这条路，能挑文件）。</summary>
+    public void PrefillPan(string url)
+    {
+        NavigateTo("pan");
+        if (GetOrCreatePage("pan") is PanPage page) page.Prefill(url);
     }
 
     // ------------------------------------------------------------------ 信息栏

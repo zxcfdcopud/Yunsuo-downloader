@@ -164,7 +164,8 @@
                         <ComboBox Width="200" ItemsSource="{x:Static vm:SettingsViewModel.Themes}"
                                   SelectedItem="{Binding ThemeDisplay}" />
                     </StackPanel>
-                    <CheckBox Content="最小化时隐藏到系统托盘" Margin="0,14,0,0" IsChecked="{Binding MinimizeToTray}" />
+                    <CheckBox Content="最小化时隐藏到系统托盘（关闭则最小化到任务栏，保留 Windows 系统动画）"
+                              Margin="0,14,0,0" IsChecked="{Binding MinimizeToTray}" />
                     <CheckBox Content="点击关闭按钮时隐藏到托盘（不退出程序）" Margin="0,6,0,0" IsChecked="{Binding CloseToTray}" />
                     <CheckBox Content="开机自动启动（写入当前用户启动项，无需管理员）" Margin="0,6,0,0"
                               IsChecked="{Binding StartWithWindows}" />
@@ -213,16 +214,14 @@
                 </StackPanel>
             </Border>
 
-            <!-- ==================== 网盘账号（1.0 暂未开放，整块隐藏） ==================== -->
-            <!-- 代码保留：下个版本把 Core/Features.cs 的 PanEnabled 改成 true 并去掉这里的
-                 Visibility 即可整块恢复，不需要重写界面。 -->
-            <StackPanel Visibility="Collapsed">
-                <TextBlock Text="网盘账号（Cookie）" Style="{StaticResource SectionTitleStyle}" />
-                <Border Style="{StaticResource CardBorderStyle}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,10"
-                                   Text="阿里云盘的公开分享不需要登录即可解析；夸克 / 123 / 百度 需要你本人账号的 Cookie 才能拿到下载地址。Cookie 使用 Windows DPAPI 加密后保存在本机，只有当前 Windows 用户能解密，不会上传到任何服务器。Cookie 会过期，失效后重新设置一次即可。" />
-                        <ItemsControl ItemsSource="{Binding PanRows}">
+            <!-- ==================== 网盘账号（手动 Cookie 兜底） ==================== -->
+            <TextBlock Text="网盘账号（Cookie）" Style="{StaticResource SectionTitleStyle}" />
+            <Border Style="{StaticResource CardBorderStyle}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource CaptionTextStyle}" Margin="0,0,0,10"
+                               TextWrapping="Wrap"
+                               Text="推荐在「网盘解析」页点「登录」用内嵌浏览器登录，不用手抄 Cookie。这里保留手动粘贴：阿里云盘 / 123 云盘的公开分享不需要登录；百度 / 夸克 需要登录态。Cookie 用 Windows DPAPI 加密保存在本机，只有当前 Windows 用户能解密，不会上传。Cookie 会过期，失效后重新登录一次即可。" />
+                    <ItemsControl ItemsSource="{Binding PanRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="0,4">
@@ -245,10 +244,9 @@
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
 
             <!-- ==================== 网络与代理 ==================== -->
             <TextBlock Text="网络与代理" Style="{StaticResource SectionTitleStyle}" />

@@ -1,4 +1,4 @@
-﻿# 云梭下载器 · Yunsuo Downloader
+# 云梭下载器 · Yunsuo Downloader
 
 > Windows 上的多线程下载器：**Fluent 2 界面 + aria2 多线程内核 + yt-dlp / ffmpeg 视频与 HLS 解析 + Chromium 浏览器插件联动**。
 > 纯本地运行，无遥测、无广告、不经过任何第三方服务器。
@@ -19,6 +19,7 @@
 | **视频网站解析** | B站 / YouTube / 抖音 / 快手 / 小红书 / 微博 / 优酷 / 爱奇艺 / 腾讯视频 / X / Instagram / TikTok 等（yt-dlp 提供，实际覆盖 1800+ 站点） |
 | **HLS / DASH** | m3u8 / mpd 并发拉取分片，ffmpeg 自动合并为 MP4；支持直播流 |
 | **磁力 / 种子 / 迅雷** | `magnet:`、`.torrent`、`thunder://` 直接粘 |
+| **网盘解析** | 百度网盘 / 阿里云盘 / 夸克网盘 / 123 云盘：粘分享链接 → 列目录（可进文件夹）→ 勾选文件批量下载；自动识别链接里的提取码；登录态用**内嵌浏览器**获取，不用手抄 Cookie |
 | **浏览器插件** | 一键嗅探网页里的视频、HLS 播放列表，点一下就送进下载器；自动带上 Cookie / Referer，会员内容与防盗链内容也能下 |
 | **断点续传** | 暂停后继续；程序被关掉再打开也能接着下 |
 | **下载时间可见** | 列表每行显示"下载时间"与已用时长 |
@@ -28,9 +29,13 @@
 
 ### 界面预览
 
-| 新建任务 | 浏览器插件 |
+| 网盘解析 | 新建任务 |
 |---|---|
-| ![新建任务](docs/screenshots/02-newtask.png) | ![浏览器插件](docs/screenshots/03-extension.png) |
+| ![网盘解析](docs/screenshots/07-pan.png) | ![新建任务](docs/screenshots/02-newtask.png) |
+
+| 最近下载（按日期分组） | 浏览器插件 |
+|---|---|
+| ![最近下载](docs/screenshots/01-downloads.png) | ![浏览器插件](docs/screenshots/03-extension.png) |
 
 | 设置 | 关于与开源致谢 |
 |---|---|
@@ -42,6 +47,8 @@
 
 - **Windows 10 (x64) 或 Windows 11**
 - **无需安装 .NET**：安装包是自包含的（自带 .NET 8 运行时）✅
+- 网盘登录需要 **Microsoft Edge WebView2 Runtime**（Win11 自带；Win10 装了 Edge 一般也已具备）。
+  没有也不影响其它功能 —— 可以改用「手动粘贴 Cookie」或浏览器插件自动采集。
 - 约 500 MB 磁盘空间（含 ffmpeg / yt-dlp / aria2c 三个内核）
 
 ---
@@ -97,6 +104,7 @@ YunsuoDownloader.sln
 src/
   YunsuoDownloader.App/      WPF 桌面程序（Fluent 2 界面）
   YunsuoDownloader.Core/     核心库：引擎 / 解析 / 设置 / 历史 / 插件服务 / 更新
+    Pan/                    网盘解析：PanService + 四家 Provider（阿里云盘 / 夸克 / 123 / 百度）
   YunsuoDownloader.Cli/      命令行工具 ysd.exe（批量下载 + 离线端到端自检）
 extension/                   Chromium MV3 浏览器插件（原生 JS，零第三方库）
                             ※ 同时作为内置副本编进 YunsuoDownloader.Core.dll，
@@ -114,6 +122,8 @@ scripts/                     构建、下载内核、自检脚本
 ysd add "<链接>"                  # 添加并等待下载完成
 ysd add "<链接>" --connections 2  # 指定本任务线程数
 ysd probe "<链接>" --verbose      # 只解析，打印每一步请求
+ysd pan "<分享链接>" --links      # 网盘分享：列目录 + 打印每个文件的直链
+ysd pan "<分享链接>" --pwd abcd   # 提取码（链接里带 ?pwd= 也能自动识别）
 ysd list                          # 历史任务
 ysd extension                     # 查看浏览器插件目录
 ysd extension --export D:\my-ext  # 把内置插件副本导出到指定目录
@@ -122,7 +132,7 @@ ysd update                        # 检查更新
 ysd selftest                      # 离线端到端自检（不联网）
 ```
 
-`ysd selftest` 会在本地起 HTTP 服务，验证多连接分片、断点续传、aria2、HLS、插件协议等 80+ 项，
+`ysd selftest` 会在本地起 HTTP 服务，验证多连接分片、断点续传、aria2、HLS、插件协议、网盘链接识别等 110+ 项，
 适合改完代码快速回归。
 
 ---
@@ -166,6 +176,10 @@ ysd selftest                      # 离线端到端自检（不联网）
 | [FFmpeg](https://ffmpeg.org/) | 音视频合并、转封装 | LGPL/GPL |
 | [WPF-UI](https://github.com/lepoco/wpfui) | Fluent 2 控件与 Mica 背景 | MIT |
 | [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet) | MVVM 源生成器 | MIT |
+| [WebView2](https://learn.microsoft.com/microsoft-edge/webview2/) | 内嵌浏览器（网盘登录取 Cookie） | Microsoft 免费可再分发运行时 |
+
+> 网盘解析的**接口行为**参考了开源项目 [LinkSwift](https://github.com/hmjz100/LinkSwift)（AGPL-3.0）
+> 的经验，但**没有引入它的任何代码**：本项目按各家网盘的公开 web 接口独立实现，因此继续以 MIT 分发。
 
 > aria2 与 ffmpeg 是 GPL 系许可证。本程序只以**独立进程**方式调用它们，代码没有链接进本程序；
 > 再分发本程序（含 `tools\`）时请一并附带它们的许可证文本与源码获取地址。
@@ -175,10 +189,12 @@ ysd selftest                      # 离线端到端自检（不联网）
 ## 路线图
 
 - [x] **v1.0** — 多线程下载、视频/HLS 解析、浏览器插件、断点续传、检查更新
-- [ ] **v1.1** — 网盘分享链接解析（百度 / 阿里云盘 / 夸克 / 123，含提取码）
+- [x] **v1.1** — 网盘分享链接解析（百度 / 阿里云盘 / 夸克 / 123，含提取码、文件夹浏览、内嵌登录取 Cookie）；
+  最近下载按日期分组；最小化恢复 Win11 原生动画
+- [ ] **v1.2** — 天翼云盘 / 移动云盘 / UC / 迅雷云盘
 
-> 网盘解析代码已经写好并在内部测试，因接口兼容性还在最后验证，1.0 版本先不开放。
-> 现在粘网盘链接会看到明确提示「网盘分享解析暂未开放」，不会误报成链接失效。
+> 网盘接口是各家的内部 web 接口，随时可能改版。解析失败时点页面底部的「解析诊断」，
+> 里面记录了每一步 HTTP 的真实返回，提 issue 时贴上来即可定位。
 
 ---
 

@@ -349,6 +349,54 @@ public sealed class DownloadItem : ObservableModel
 
     [JsonIgnore] public bool CanResume => Status is DownloadStatus.Paused or DownloadStatus.Failed or DownloadStatus.Canceled;
 
+    // ---------------------------------------------------------- 日期分组（最近下载页）
+    /// <summary>
+    /// 日期分组的键：0 = 今天，1 = 昨天，2 = 本周，3 = 本月，4 = 更早。
+    ///
+    /// 界面上按这个值升序排，就是「今天 → 昨天 → 本周 → 本月 → 更早」的顺序，
+    /// 再在组内按 <see cref="CreatedAt"/> 倒序。数字越小越靠前。
+    /// </summary>
+    [JsonIgnore]
+    public int DateGroupOrder
+    {
+        get
+        {
+            var today = DateTime.Today;
+            var day = CreatedAt.Date;
+            if (day == today) return 0;
+            if (day == today.AddDays(-1)) return 1;
+
+            // 本周：以周一为一周的开始（ISO 习惯，国内也更常用）
+            var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+            if (day >= monday && day < today) return 2;
+
+            if (day.Year == today.Year && day.Month == today.Month) return 3;
+            return 4;
+        }
+    }
+
+    /// <summary>分组标题，直接绑到列表的分组头上。</summary>
+    [JsonIgnore]
+    public string DateGroupName => DateGroupOrder switch
+    {
+        0 => "今天",
+        1 => "昨天",
+        2 => "本周",
+        3 => "本月",
+        _ => "更早"
+    };
+
+    /// <summary>分组副标题：显示这一组覆盖的日期范围，找文件时更直观。</summary>
+    [JsonIgnore]
+    public string DateGroupRange => DateGroupOrder switch
+    {
+        0 => DateTime.Today.ToString("M月d日"),
+        1 => DateTime.Today.AddDays(-1).ToString("M月d日"),
+        2 => "本周",
+        3 => DateTime.Today.ToString("yyyy年M月"),
+        _ => "本月之前"
+    };
+
     /// <summary>刷新所有派生属性（UI 批量刷新用）。</summary>
     public void RaiseAll()
     {

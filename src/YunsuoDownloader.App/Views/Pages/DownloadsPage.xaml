@@ -62,9 +62,12 @@
                 <ComboBoxItem Content="已完成" />
                 <ComboBoxItem Content="失败" />
             </ComboBox>
+            <CheckBox Grid.Column="2" Margin="12,0,10,0" VerticalAlignment="Center"
+                      Content="按日期分组" IsChecked="{Binding GroupByDate}"
+                      ToolTip="把任务按「今天 / 昨天 / 本周 / 本月 / 更早」归类，点分组标题可以折叠" />
 
             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                <ui:Button Appearance="Secondary" Content="粘贴链接下载"
+                <ui:Button Appearance="Secondary" Content="粘贴链接" ToolTip="从剪贴板读取链接并添加下载任务"
                            Command="{Binding AddUrlFromClipboardCommand}" />
                 <ui:Button Appearance="Secondary" Content="全部暂停" Margin="6,0,0,0"
                            Command="{Binding PauseAllCommand}" />
@@ -79,7 +82,41 @@
 
         <!-- ==================== 列表 ==================== -->
         <Grid Grid.Row="2">
-            <ListView ItemsSource="{Binding ItemsView}" Style="{StaticResource FlatListViewStyle}">
+            <ListView ItemsSource="{Binding ItemsView}" Style="{StaticResource FlatListViewStyle}"
+                      VirtualizingPanel.IsVirtualizingWhenGrouping="True">
+
+                <!-- 日期分组头：今天 / 昨天 / 本周 / 本月 / 更早，可折叠 -->
+                <ListView.GroupStyle>
+                    <GroupStyle>
+                        <GroupStyle.ContainerStyle>
+                            <Style TargetType="{x:Type GroupItem}">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="{x:Type GroupItem}">
+                                            <Expander IsExpanded="True" Margin="0,0,0,6"
+                                                      HorizontalContentAlignment="Stretch">
+                                                <Expander.Header>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                                   FontSize="13" />
+                                                        <Border Margin="8,0,0,0" Padding="7,1" CornerRadius="9"
+                                                                VerticalAlignment="Center"
+                                                                Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                            <TextBlock FontSize="11" Opacity="0.8"
+                                                                       Text="{Binding ItemCount, StringFormat={}{0} 项}" />
+                                                        </Border>
+                                                    </StackPanel>
+                                                </Expander.Header>
+                                                <ItemsPresenter />
+                                            </Expander>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </GroupStyle.ContainerStyle>
+                    </GroupStyle>
+                </ListView.GroupStyle>
+
                 <ListView.ItemTemplate>
                     <DataTemplate>
                         <Border Style="{StaticResource CardBorderStyle}" Padding="12,10">
@@ -132,10 +169,9 @@
 
                                 <!-- 操作 -->
                                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <!-- 提取码补填按钮：1.0 版网盘功能暂未开放，先隐藏（代码保留，下个版本去掉
-                                         Visibility="Collapsed" 即可恢复；Visible 条件仍是 NeedPassword） -->
+                                    <!-- 提取码补填：网盘分享解析失败时点这里补填提取码并重试 -->
                                     <ui:Button Appearance="Primary" Padding="8,6" ToolTip="填写提取码并重新解析"
-                                               Visibility="Collapsed"
+                                               Visibility="{Binding NeedPassword, Converter={StaticResource BoolToVisibility}}"
                                                Command="{Binding DataContext.FillPasswordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                CommandParameter="{Binding}">
                                         <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="14" Text="&#xE8D7;" />

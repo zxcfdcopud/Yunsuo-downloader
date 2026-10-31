@@ -242,12 +242,11 @@ public sealed partial class NewTaskViewModel : ObservableObject
             if (!result.Success)
             {
                 StatusMessage = "解析失败：" + result.ErrorMessage;
-                // 网盘功能未开放时不要再提示"去设置里填 Cookie"——那个设置项也是隐藏的，
-                // 只会让用户困惑（他点进去也找不到）。
-                if (Core.Features.PanEnabled && provider is not null && provider.RequiresCredential &&
+                // 需要登录态的网盘（百度 / 夸克）解析失败时，顺手提示去哪里登录
+                if (provider is not null && provider.RequiresCredential &&
                     !(AppServices.Settings.Current.PanCredentials
                         .Any(c => c.Provider == provider.Name && !string.IsNullOrEmpty(c.Cookie))))
-                    StatusMessage += "\n提示：该网盘需要先在「设置 → 网盘账号」里填入 Cookie。";
+                    StatusMessage += "\n提示：该网盘需要登录态。可以到「网盘解析」页点登录，或安装浏览器插件后在网盘网页登录一次。";
 
                 if (result.Diagnostics.Count > 0)
                 {

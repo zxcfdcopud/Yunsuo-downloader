@@ -36,8 +36,31 @@ public sealed class SettingsService
         }
 
         ApplyDefaults(loaded);
+        Migrate(loaded);
         lock (_lock) Current = loaded;
         Save();
+    }
+
+    /// <summary>当前设置结构版本，见 <see cref="AppSettings.SettingsVersion"/>。</summary>
+    public const int CurrentSettingsVersion = 2;
+
+    /// <summary>
+    /// 一次性设置迁移。只做"老版本默认值写错了"这类修正，不碰用户主动改过的选项。
+    /// </summary>
+    private static void Migrate(AppSettings s)
+    {
+        if (s.SettingsVersion >= CurrentSettingsVersion) return;
+
+        if (s.SettingsVersion < 2)
+        {
+            // 1.0 的默认值是 MinimizeToTray = true，导致最小化时窗口被 Hide()，
+            // Win11 的原生最小化动画完全不出现。这里把老用户的这个值也掰回 false：
+            // 想常驻托盘的可以自己在设置里打开（关闭按钮的"关闭到托盘"不受影响）。
+            s.MinimizeToTray = false;
+            Utils.Log.Info("[设置迁移] MinimizeToTray -> false（最小化改为进任务栏，恢复系统动画）");
+        }
+
+        s.SettingsVersion = CurrentSettingsVersion;
     }
 
     private static void ApplyDefaults(AppSettings s)

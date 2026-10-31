@@ -35,6 +35,10 @@
     <!-- Fluent 2 设计规范的 WPF 实现（Mica 背景 / NavigationView / Fluent 控件与图标） -->
     <PackageReference Include="WPF-UI" Version="4.3.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- 网盘登录：内嵌 Edge WebView2，用户在自己熟悉的网页里扫码/密码登录，
+         程序只负责把登录后的 Cookie 取回来（DPAPI 加密落盘）。
+         运行时依赖系统里的 Edge WebView2 Runtime —— Win11 自带，Win10 一般也随 Edge 装了。 -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,7 +4,7 @@ using YunsuoDownloader.Core.Engine;
 using YunsuoDownloader.Core.Models;
 using YunsuoDownloader.Core.Providers;
 using YunsuoDownloader.Core.Providers.Builtin;
-using YunsuoDownloader.Core.Providers.Pan;
+using YunsuoDownloader.Core.Pan;
 using YunsuoDownloader.Core.Utils;
 
 namespace YunsuoDownloader.Core.Services;
@@ -111,10 +111,11 @@ public sealed class DownloadManager : IAsyncDisposable
         _providerHttp.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", Aria2Engine.DefaultUserAgent);
 
         _resolver = new LinkResolver()
-            .Register(new AliyunPanProvider())
-            .Register(new QuarkPanProvider())
-            .Register(new Pan123Provider())
-            .Register(new BaiduPanProvider())
+            // 四家网盘统一走适配器：PanLinkProvider 内部复用 PanService 的"列目录 + 取直链"能力
+            .Register(new PanLinkProvider(PanCatalog.Find("Aliyun")!))
+            .Register(new PanLinkProvider(PanCatalog.Find("Quark")!))
+            .Register(new PanLinkProvider(PanCatalog.Find("Pan123")!))
+            .Register(new PanLinkProvider(PanCatalog.Find("Baidu")!))
             .Register(new ThunderProvider())
             .Register(new Ed2kProvider())
             .Register(new MagnetProvider())

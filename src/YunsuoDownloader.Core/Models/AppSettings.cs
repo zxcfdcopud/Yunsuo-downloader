@@ -120,9 +120,23 @@ public sealed class AppSettings
     public string BackdropType { get; set; } = "Mica";
 
     // ---------------------------------------------------------- 行为
-    public bool MinimizeToTray { get; set; } = true;
+    /// <summary>
+    /// 最小化时是否隐藏到系统托盘。
+    ///
+    /// 默认 <c>false</c>：直接最小化到任务栏。缩到托盘时窗口是被 <c>Hide()</c> 掉的，
+    /// 根本不会往任务栏飞，所以 Windows 11 原生那个"缩窗口"动画完全没有——
+    /// 用户反馈"最小化没有动画 / 切软件没有动画"就是这个原因。
+    /// 需要后台常驻的用户可以在设置里把它打开。
+    /// </summary>
+    public bool MinimizeToTray { get; set; }
 
     public bool CloseToTray { get; set; } = true;
+
+    /// <summary>
+    /// 设置文件的版本号，用来做一次性迁移（见 <see cref="Services.SettingsService"/>）。
+    /// 0 = 1.0 及更早的版本写的文件。
+    /// </summary>
+    public int SettingsVersion { get; set; }
 
     public bool StartWithWindows { get; set; }
 

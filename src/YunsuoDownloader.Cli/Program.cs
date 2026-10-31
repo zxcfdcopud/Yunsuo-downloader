@@ -1,5 +1,6 @@
 using System.Text;
 using YunsuoDownloader.Core.Models;
+using YunsuoDownloader.Core.Pan;
 using YunsuoDownloader.Core.Services;
 using YunsuoDownloader.Core.Utils;
 
@@ -31,6 +32,7 @@ internal static class Program
                 "selftest" => await SelfTest.RunAsync(ArgValue(args, "--work")),
                 "tools" => await ToolsAsync(),
                 "probe" => await ProbeAsync(args),
+                "pan" => await PanAsync(args),
                 "add" => await AddAsync(args),
                 "list" => await ListAsync(),
                 "update" => await UpdateAsync(),
@@ -101,6 +103,11 @@ internal static class Program
               probe <url>            只解析链接，不下载，打印解析结果
                    --pwd <提取码>     网盘分享的提取码
                    --verbose          打印每一步 HTTP 请求与响应（排查网盘接口改版用）
+              pan <分享链接>         网盘分享：列目录、看文件大小，加 --links 直接打印直链
+                   --pwd <提取码>     提取码（链接里带 ?pwd= 也能自动识别）
+                   --dir <目录ID>     进指定目录（先用根目录命令看 ID）
+                   --links            给每个文件取一次直链
+                   --verbose          打印每一步 HTTP 请求与响应
               list                   列出历史任务
               extension              显示浏览器插件目录（找不到会自动释放程序内置的副本）
                    --export <目录>    把内置的插件副本导出到指定目录
@@ -223,11 +230,104 @@ internal static class Program
             foreach (var line in result.Diagnostics) Console.WriteLine("  " + line);
             Console.WriteLine();
             Console.WriteLine("提示：接口返回里出现 \"not exist\"/404 通常意味着网盘改了接口路径，");
-            Console.WriteLine("      请参考 docs/PAN_PROVIDERS.md 更新对应 Provider。");
+            Console.WriteLine("      可以到「网盘解析」页点「诊断」看每一步的真实返回，或看 src/Core/Pan/Providers。");
         }
 
         await bundle.Manager.DisposeAsync();
         return result.Success ? 0 : 1;
+    }
+
+    // ------------------------------------------------------------------ pan
+    /// <summary>
+    /// 网盘分享：列目录 / 取直链。
+    /// 界面上的「网盘解析」页做的是同一件事，这里给的是无界面版（排查问题、批量取链接用）。
+    /// </summary>
+    private static async Task<int> PanAsync(string[] args)
+    {
+        var url = args.Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            Console.Error.WriteLine("用法：ysd pan <分享链接> [--pwd <提取码>] [--dir <目录ID>] [--links] [--verbose]");
+            return 2;
+        }
+
+        var pwd = ArgValue(args, "--pwd") ?? ArgValue(args, "--password");
+        var dirId = ArgValue(args, "--dir");
+        var links = args.Any(a => a.Equals("--links", StringComparison.OrdinalIgnoreCase));
+        var verbose = args.Any(a => a.Equals("--verbose", StringComparison.OrdinalIgnoreCase) || a == "-v");
+
+        AppPaths.EnsureCreated();
+        Log.Init(AppPaths.LogDirectory);
+        var settings = new SettingsService();
+        settings.Load();
+        var service = new PanService(settings);
+
+        var provider = PanCatalog.Match(url);
+        if (provider is null)
+        {
+            Console.Error.WriteLine("这不是支持的四家网盘链接（百度 / 阿里云盘 / 夸克 / 123）。");
+            return 2;
+        }
+
+        var share = provider.ParseShare(url);
+        if (share is null)
+        {
+            Console.Error.WriteLine($"{provider.DisplayName} 的链接格式认不出来。");
+            return 2;
+        }
+
+        if (!string.IsNullOrEmpty(pwd)) share.Password = pwd;
+        var loggedIn = service.HasLogin(provider.Id);
+
+        Console.WriteLine($"网盘        : {provider.DisplayName}");
+        Console.WriteLine($"分享 ID     : {share.ShareId}");
+        Console.WriteLine($"提取码      : {(string.IsNullOrEmpty(share.Password) ? "(无)" : "已提供")}");
+        Console.WriteLine($"登录态      : {(loggedIn ? "有" : "无")}" +
+                          (!loggedIn && provider.RequiresLogin ? "   ← 这家通常需要登录，可先用界面里的「登录」" : ""));
+        Console.WriteLine();
+
+        var list = await service.ListAsync(share, dirId ?? provider.RootId, verbose);
+        if (!list.Ok)
+        {
+            Console.WriteLine("解析失败：" + list.Error);
+            PrintPanDiagnostics(list.Diagnostics, verbose);
+            return 1;
+        }
+
+        Console.WriteLine($"分享标题    : {list.ShareTitle ?? "(接口没返回)"}");
+        Console.WriteLine($"当前目录    : {list.ParentId}");
+        Console.WriteLine($"条目        : {list.Entries.Count} 项（文件夹 {list.Entries.Count(e => e.IsFolder)} / 文件 {list.Entries.Count(e => !e.IsFolder)}）");
+        Console.WriteLine();
+
+        for (var i = 0; i < list.Entries.Count; i++)
+        {
+            var e = list.Entries[i];
+            Console.WriteLine($"{i + 1,3}. {(e.IsFolder ? "[文件夹]" : "[文件]  "),-10} {e.SizeText,10}  {e.ModifiedText,-16}  {e.Name}");
+        }
+
+        if (links)
+        {
+            foreach (var e in list.Entries.Where(x => !x.IsFolder))
+            {
+                var link = await service.GetDownloadAsync(share, e, verbose);
+                Console.WriteLine();
+                Console.WriteLine($"▶ {e.Name}（{e.SizeText}）");
+                Console.WriteLine(link.Ok
+                    ? "  " + link.Url
+                    : "  取直链失败：" + (link.Error ?? "未知原因").Replace("\r", " ").Replace("\n", " "));
+            }
+        }
+
+        PrintPanDiagnostics(list.Diagnostics, verbose);
+        return 0;
+    }
+
+    private static void PrintPanDiagnostics(List<string> diagnostics, bool verbose)
+    {
+        if (diagnostics.Count == 0 || !verbose) return;
+        Console.WriteLine();
+        Console.WriteLine($"—— 解析过程诊断（{diagnostics.Count} 步）——");
+        foreach (var line in diagnostics) Console.WriteLine("  " + line);
     }
 
     // ------------------------------------------------------------------ add

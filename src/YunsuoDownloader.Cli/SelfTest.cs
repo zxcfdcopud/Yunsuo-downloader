@@ -482,40 +482,43 @@ public static class SelfTest
         Check("HEVC：avc1 不判为 HEVC", !avcItem.IsHevc);
         Check("HEVC：没有 codec 不判为 HEVC", !new DownloadItem().IsHevc);
 
-        // ---- 网盘功能门禁（1.0 暂未开放）----
-        // 这个用例跟着 Features.PanEnabled 走：关闭时必须拦截并给出提示；
-        // 下个版本把开关打开后，这里会自动改成"不拦截"，不会变成假失败。
-        var panUrls = new[]
+        // ---- 网盘解析：链接识别 / 提取码（纯离线，不碰网络）----
+        var panCases = new (string Url, string Provider, string ShareId, string? Pwd)[]
         {
-            "https://pan.baidu.com/s/1AbCdEfGh",
-            "https://www.alipan.com/s/abcdefg123",
-            "https://pan.quark.cn/s/abcdef123456",
-            "https://www.123pan.com/s/abcd-efgh"
+            ("https://pan.baidu.com/s/1AbCdEfGh", "Baidu", "1AbCdEfGh", null),
+            ("https://pan.baidu.com/s/1AbCdEfGh?pwd=abcd", "Baidu", "1AbCdEfGh", "abcd"),
+            ("https://www.alipan.com/s/abcdefg123", "Aliyun", "abcdefg123", null),
+            ("https://www.aliyundrive.com/s/xyz789?pwd=1234", "Aliyun", "xyz789", "1234"),
+            ("https://pan.quark.cn/s/abcdef123456", "Quark", "abcdef123456", null),
+            ("https://pan.quark.cn/s/abcdef123456?pwd=8888", "Quark", "abcdef123456", "8888"),
+            ("https://www.123pan.com/s/abcd-efgh", "Pan123", "abcd-efgh", null),
+            ("https://www.123865.com/s/abcd-efgh?pwd=9999", "Pan123", "abcd-efgh", "9999")
         };
-        foreach (var pu in panUrls)
+
+        foreach (var c in panCases)
         {
-            var provider = manager.MatchProvider(pu);
-            var isPan = Core.Providers.LinkResolver.IsPanProvider(provider?.Name);
-            if (!Core.Features.PanEnabled)
-            {
-                Check($"网盘门禁：{provider?.Name} 命中后不直接放行", isPan,
-                    $"解析器={provider?.Name}");
-                var r = manager.ResolveAsync(pu).GetAwaiter().GetResult();
-                Check($"网盘门禁：{provider?.Name} 提示「暂未开放」",
-                    !r.Success && (r.ErrorMessage?.Contains("暂未开放") ?? false),
-                    Truncate(r.ErrorMessage, 60));
-            }
-            else
-            {
-                Check($"网盘门禁已开启：{provider?.Name} 不再被拦截", true, "Features.PanEnabled=true");
-            }
+            var provider = Core.Pan.PanCatalog.Match(c.Url);
+            Check($"网盘识别：{c.Url}", provider?.Id == c.Provider,
+                $"解析器={provider?.Id ?? "无"}");
+
+            var share = provider?.ParseShare(c.Url);
+            Check($"网盘分享 ID：{c.Provider}", share?.ShareId == c.ShareId,
+                $"shareId={share?.ShareId ?? "无"}");
+            Check($"网盘提取码：{c.Provider}", share?.Password == c.Pwd,
+                $"pwd={share?.Password ?? "无"}");
         }
 
-        // 非网盘链接不受门禁影响（保证没误伤）
+        Check("网盘：四家都注册了", Core.Pan.PanCatalog.Providers.Count == 4,
+            string.Join("/", Core.Pan.PanCatalog.Providers.Select(p => p.Id)));
+        Check("网盘：普通直链不误判为网盘", !Core.Pan.PanCatalog.IsPanUrl("https://example.com/a.zip"));
+        Check("网盘：网盘链接会走 PanLinkProvider",
+            manager.MatchProvider("https://pan.quark.cn/s/abcdef123456")?.GetType().Name == "PanLinkProvider",
+            manager.MatchProvider("https://pan.quark.cn/s/abcdef123456")?.Name ?? "无");
+
+        // 非网盘链接不受影响（保证没误伤）
         var biliResolve = manager.ResolveAsync("https://www.bilibili.com/video/BV1xx411c7mD")
             .GetAwaiter().GetResult();
-        Check("网盘门禁：B站等非网盘链接不受影响",
-            biliResolve.Success, Truncate(biliResolve.ErrorMessage, 60));
+        Check("网盘改动没影响 B 站等普通链接", biliResolve.Success, Truncate(biliResolve.ErrorMessage, 60));
 
 
         // 迅雷链接解码

@@ -1,0 +1,187 @@
+<UserControl x:Class="YunsuoDownloader.App.Views.Pages.PanPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:vm="clr-namespace:YunsuoDownloader.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:PanViewModel}">
+
+    <Grid Margin="2">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ==================== 标题 ==================== -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="网盘解析" Style="{StaticResource PageTitleStyle}" />
+            <TextBlock Style="{StaticResource CaptionTextStyle}"
+                       Text="支持百度网盘 / 阿里云盘 / 夸克网盘 / 123 云盘。粘分享链接（提取码会一起识别），进文件夹挑文件，勾选后批量下载。" />
+        </StackPanel>
+
+        <!-- ==================== 输入 ==================== -->
+        <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}" Padding="14,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="130" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <ui:TextBox Grid.Column="0" PlaceholderText="粘贴网盘分享链接，例如 https://pan.baidu.com/s/1AbCdEfGh?pwd=abcd"
+                            Text="{Binding LinkText, UpdateSourceTrigger=PropertyChanged}" />
+                <ui:TextBox Grid.Column="1" Margin="8,0,0,0" PlaceholderText="提取码"
+                            Text="{Binding PasswordText, UpdateSourceTrigger=PropertyChanged}" />
+                <ui:Button Grid.Column="2" Appearance="Primary" Content="解析分享" Margin="8,0,0,0"
+                           Command="{Binding ParseCommand}"
+                           IsEnabled="{Binding IsBusy, Converter={StaticResource BoolToInverse}}" />
+                <ui:Button Grid.Column="3" Appearance="Secondary" Content="清空" Margin="8,0,0,0"
+                           Command="{Binding ClearCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- ==================== 登录状态 ==================== -->
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}" Padding="14,10" Margin="0,10,0,0">
+            <StackPanel>
+                <TextBlock Text="登录状态" Style="{StaticResource HeaderTextStyle}" Margin="0,0,0,8" />
+                <ItemsControl ItemsSource="{Binding Logins}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,0,10,8" Padding="10,7" CornerRadius="6"
+                                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                    ToolTip="{Binding Hint}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="13"
+                                               VerticalAlignment="Center" Margin="0,0,7,0"
+                                               Text="&#xE77B;" />
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12" />
+                                        <TextBlock Text="{Binding StateText}" FontSize="11" Opacity="0.7" />
+                                    </StackPanel>
+                                    <ui:Button Appearance="Secondary" Padding="10,3" FontSize="12"
+                                               Content="{Binding ActionText}"
+                                               Command="{Binding DataContext.ToggleLoginCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- ==================== 结果标题栏 ==================== -->
+        <Grid Grid.Row="3" Margin="0,12,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ui:Button Grid.Column="0" Appearance="Secondary" Padding="10,5" Content="返回上级"
+                       IsEnabled="{Binding CanGoUp}" Command="{Binding UpCommand}" />
+            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding ShareTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding DirPathText}" Style="{StaticResource CaptionTextStyle}"
+                           TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <TextBlock Text="{Binding SelectedCountText}" VerticalAlignment="Center" Margin="0,0,10,0"
+                           Style="{StaticResource CaptionTextStyle}" />
+                <ui:Button Appearance="Secondary" Content="全选" Command="{Binding ToggleSelectAllCommand}" />
+                <ui:Button Appearance="Secondary" Content="清空选择" Margin="6,0,0,0"
+                           Command="{Binding ClearSelectionCommand}" />
+                <ui:Button Appearance="Primary" Content="下载选中" Margin="6,0,0,0"
+                           Command="{Binding DownloadSelectedCommand}"
+                           IsEnabled="{Binding CanDownload}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ==================== 文件列表 ==================== -->
+        <Grid Grid.Row="4">
+            <ListView ItemsSource="{Binding Files}" Style="{StaticResource FlatListViewStyle}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardBorderStyle}" Padding="10,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="32" />
+                                    <ColumnDefinition Width="28" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox Grid.Column="0" VerticalAlignment="Center"
+                                          IsChecked="{Binding IsSelected}"
+                                          Click="OnFileCheckClick"
+                                          Visibility="{Binding IsFolder, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                                <TextBlock Grid.Column="1" FontFamily="{StaticResource IconFontFamily}" FontSize="16"
+                                           VerticalAlignment="Center" Opacity="0.8" Text="{Binding Glyph}" />
+
+                                <!-- 文件夹：点名字进目录 -->
+                                <ui:Button Grid.Column="2" Appearance="Transparent" Padding="0" HorizontalAlignment="Left"
+                                           Content="{Binding Name}" FontWeight="SemiBold"
+                                           Command="{Binding DataContext.EnterFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           CommandParameter="{Binding}"
+                                           Visibility="{Binding IsFolder, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="SemiBold"
+                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding IsFolder, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                                <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontSize="12" Opacity="0.8"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="{Binding ModifiedText}" FontSize="12" Opacity="0.6"
+                                           VerticalAlignment="Center" />
+                                <ui:Button Grid.Column="5" Appearance="Transparent" Padding="8,4" ToolTip="复制直链"
+                                           Command="{Binding DataContext.CopyLinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                           CommandParameter="{Binding}"
+                                           Visibility="{Binding IsFolder, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="13" Text="&#xE8C8;" />
+                                </ui:Button>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <!-- 空状态 -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Visibility="{Binding HasResult, Converter={StaticResource InverseBoolToVisibility}}">
+                <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="40" Text="&#xE774;"
+                           Opacity="0.3" HorizontalAlignment="Center" />
+                <TextBlock Text="还没有解析结果" FontSize="15" Margin="0,12,0,4" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource CaptionTextStyle}" HorizontalAlignment="Center"
+                           MaxWidth="560" TextWrapping="Wrap" TextAlignment="Center"
+                           Text="粘贴分享链接后点「解析分享」。需要登录态的网盘（百度 / 夸克）请先点上面的「登录」—— 会弹出一个内嵌浏览器，你正常登录即可，程序只取 Cookie。" />
+            </StackPanel>
+        </Grid>
+
+        <!-- ==================== 状态 + 诊断 ==================== -->
+        <StackPanel Grid.Row="5" Margin="0,10,0,0">
+            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Style="{StaticResource CaptionTextStyle}" />
+            <Expander Margin="0,8,0,0" HorizontalAlignment="Stretch"
+                      Visibility="{Binding HasDiagnostics, Converter={StaticResource BoolToVisibility}}"
+                      Header="解析诊断（每一步 HTTP 的真实返回，接口改版时看这里）">
+                <TextBox Text="{Binding DiagnosticsText}" IsReadOnly="True" FontFamily="Consolas" FontSize="11"
+                         TextWrapping="NoWrap" MaxHeight="180" VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto" AcceptsReturn="True" />
+            </Expander>
+        </StackPanel>
+    </Grid>
+</UserControl>

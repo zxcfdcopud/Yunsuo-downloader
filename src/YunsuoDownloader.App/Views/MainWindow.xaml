@@ -57,6 +57,13 @@
                                 <TextBlock Text="新建任务" Margin="14,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </ListBoxItem>
+                        <ListBoxItem Tag="pan">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="16" Text="&#xE753;"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="网盘解析" Margin="14,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </ListBoxItem>
                         <ListBoxItem Tag="extension">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock FontFamily="{StaticResource IconFontFamily}" FontSize="16" Text="&#xEA86;"
