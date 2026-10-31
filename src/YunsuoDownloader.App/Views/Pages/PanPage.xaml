@@ -8,6 +8,52 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:PanViewModel}">
 
+    <UserControl.Resources>
+        <!--
+            自己画的勾选框。
+            用系统 CheckBox 时，勾选态会被渲染成一个被裁掉一半的蓝色方块
+            （用户截图反馈"左边的按钮显示不全"就是这个），而且高 DPI 下更明显。
+            这里用 18×18 的圆角方块 + 白色对勾，尺寸固定、不依赖主题模板。
+        -->
+        <Style x:Key="RowCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Border x:Name="Box" Width="18" Height="18" CornerRadius="4"
+                                    BorderThickness="1.4"
+                                    Background="Transparent"
+                                    BorderBrush="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <Path x:Name="Mark" Width="18" Height="18" Stretch="None"
+                                  Data="M 4.5,9 L 7.5,12 L 13.5,5.5"
+                                  Stroke="White" StrokeThickness="1.8"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background"
+                                        Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                <Setter TargetName="Box" Property="BorderBrush"
+                                        Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush"
+                                        Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="2">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -170,7 +216,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="4,0,0,0"
+                                <CheckBox Grid.Column="0" Style="{StaticResource RowCheckBoxStyle}" Margin="4,0,0,0"
                                           IsChecked="{Binding IsSelected}"
                                           Visibility="{Binding IsFolder, Converter={StaticResource InverseBoolToVisibility}}" />
 
