@@ -173,9 +173,12 @@ public sealed class QuarkPanProvider : IPanProvider
             // 2026-10 实测：未登录时夸克对"转存"直接回 401 code=31001「require login [guest]」
             if (save.Status == 401 || save.GetLong("code") == 31001)
             {
+                var expired = browser.CookieHeader.Length > 0;
                 return PanDownloadLink.Fail(
                     "夸克网盘要求先登录才能取直链（转存到自己网盘再下载）。\n" +
-                    "请到「网盘解析」页点夸克那一行的「登录」，登录后再试一次。");
+                    (expired
+                        ? "程序里已经存了一份夸克登录态，但被服务端拒绝了 —— 多半是**过期了**，请重新登录一次。"
+                        : "请点「网盘解析」页夸克那一行的「登录」，登录后再试一次。"));
             }
             return PanDownloadLink.Fail("夸克转存失败：" + (save.Get("message") ?? save.Snippet));
         }

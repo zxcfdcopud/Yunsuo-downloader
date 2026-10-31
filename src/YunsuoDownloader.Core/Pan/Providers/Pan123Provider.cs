@@ -185,12 +185,15 @@ public sealed class Pan123Provider : IPanProvider
             var code = resp?.GetLong("code") ?? -1;
             var message = resp?.Get("message") ?? resp?.Snippet ?? "无响应";
 
-            // 未登录（取的是个人网盘接口）或文件被限制时给可操作的说明
+            // 未登录或文件被限制时给可操作的说明
             if (code is 20101 or 20102 or 401)
             {
+                var expired = browser.CookieHeader.Length > 0;
                 return PanDownloadLink.Fail(
                     $"123 云盘要求先登录才能取这个文件的直链（code={code}「{message}」）。\n" +
-                    "请到「网盘解析」页点 123 云盘那一行的「登录」，登录后再试一次。");
+                    (expired
+                        ? "程序里已存了一份 123 登录态但被拒绝，多半已过期，请重新登录一次。"
+                        : "请点「网盘解析」页 123 云盘那一行的「登录」，登录后再试一次。"));
             }
 
             return PanDownloadLink.Fail(
